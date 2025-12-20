@@ -4,6 +4,7 @@
 提供基于 LlamaIndex 的向量索引管理和智能问答功能
 """
 
+import os
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -16,6 +17,7 @@ from llama_index.core import (
 )
 from llama_index.core.schema import Document
 from loguru import logger
+from openai import OpenAI
 
 from config import SystemConfig
 from src.loaders.document_loader import DocumentLoader
@@ -61,6 +63,7 @@ class AcademicAgent:
         documents_dir: Optional[str] = None,
         index_dir: Optional[str] = None,
         auto_load: bool = True,
+        max_history_turns: int = 10,
     ):
         """
         初始化学术论文问答 Agent
@@ -69,6 +72,7 @@ class AcademicAgent:
             documents_dir: 文档目录路径，默认使用配置中的路径
             index_dir: 索引存储目录路径，默认使用配置中的路径
             auto_load: 是否自动加载或构建索引
+            max_history_turns: 多轮对话最大保留历史轮数（默认10轮，即20条消息）
         """
         logger.info(LOG_SEPARATOR_FULL)
         logger.info("初始化学术论文问答 Agent")
@@ -88,7 +92,10 @@ class AcademicAgent:
         
         # 对话历史管理
         self.chat_history: List[Dict[str, str]] = []  # 存储对话历史 [{"role": "user/assistant", "content": "..."}]
-        self.max_history_turns: int = 10  # 最大保留历史轮数
+        self.max_history_turns: int = max_history_turns  # 最大保留历史轮数
+        
+        # 文件上传缓存（用于多轮对话）
+        self._uploaded_files_cache: Dict[str, Dict[str, Any]] = {}  # {file_path: {"id": file_id, "content": file_content}}
         
         # 确保目录存在
         self._ensure_directories()
@@ -282,7 +289,6 @@ class AcademicAgent:
     
     def _build_index(self):
         """构建向量索引"""
-        import os
         logger.info(f"使用 Embedding 提供商: {os.getenv('EMBEDDING_PROVIDER', 'huggingface')}")
         logger.info(f"Chunk 大小: {SystemConfig.CHUNK_SIZE}, 重叠: {SystemConfig.CHUNK_OVERLAP}")
         
@@ -368,7 +374,7 @@ class AcademicAgent:
             # 构建带历史的提示词
             context_prompt = self._build_context_prompt(question)
             enhanced_question = context_prompt
-            logger.debug(f"使用对话历史，历史轮数: {len(self.chat_history) // 2}")
+            logger.debug(f"使用对话历史，当前轮数: {len(self.chat_history) // 2}，最大限制: {self.max_history_turns} 轮")
         
         start_time = datetime.now()
         web_sources = []
@@ -390,6 +396,21 @@ class AcademicAgent:
                         logger.info(f"✓ 找到 {len(web_sources)} 个网络资源:")
                         for i, source in enumerate(web_sources, 1):
                             logger.info(f"  [{i}] {source['url']}")
+                        
+                        # 将搜索结果添加到查询中
+                        web_context = "\n\n".join([
+                            f"来源 [{i+1}]: {s['title']}\n{s['snippet']}\n网址: {s['url']}"
+                            for i, s in enumerate(web_sources)
+                        ])
+                        enhanced_question = f"{enhanced_question}\n\n参考以下网络搜索结果:\n{web_context}"
+                        logger.debug(f"已将 {len(web_sources)} 个搜索结果添加到查询上下文")
+                        
+                        # 打印加上网络搜索结果后输入给模型的完整内容
+                        logger.info("\n" + "="*70)
+                        logger.info("【RAG模式】输入给模型的完整查询内容:")
+                        logger.info("="*70)
+                        logger.info(enhanced_question)
+                        logger.info("="*70 + "\n")
                     else:
                         logger.warning("⚠ 未找到相关网络资源")
                 except Exception as e:
@@ -461,11 +482,82 @@ class AcademicAgent:
             logger.error(f"✗ 查询失败: {e}")
             raise
     
+    def _upload_files_to_moonshot(self, file_paths: List[str], use_cache: bool = True) -> List[Dict[str, Any]]:
+        """
+        上传文件到 Moonshot API
+        
+        Args:
+            file_paths: 文件路径列表
+            use_cache: 是否使用缓存（多轮对话时避免重复上传）
+            
+        Returns:
+            上传的文件对象列表
+        """
+        api_key = os.getenv("LLM_API_KEY")
+        api_base = os.getenv("LLM_API_BASE", "https://api.moonshot.cn/v1")
+        
+        # 检查是否是 Moonshot API
+        if "moonshot" not in api_base.lower():
+            logger.warning("当前 API 不是 Moonshot，无法使用文件上传功能")
+            return []
+        
+        client = OpenAI(api_key=api_key, base_url=api_base)
+        uploaded_files = []
+        
+        for file_path in file_paths:
+            try:
+                # 处理路径
+                path = Path(file_path)
+                if not path.is_absolute():
+                    path = self.documents_dir / path
+                
+                path_str = str(path)
+                
+                if not path.exists():
+                    logger.warning(f"⚠️ 文件不存在: {path}")
+                    continue
+                
+                # 检查缓存
+                if use_cache and path_str in self._uploaded_files_cache:
+                    cached_file = self._uploaded_files_cache[path_str]
+                    uploaded_files.append(cached_file)
+                    logger.info(f"♻️ 使用缓存的文件: {path.name} (ID: {cached_file['id']})")
+                    continue
+                
+                logger.info(f"📤 正在上传文件到 Moonshot: {path.name}")
+                
+                # 上传文件
+                file_object = client.files.create(
+                    file=path,
+                    purpose="file-extract"
+                )
+                
+                file_data = {
+                    'id': file_object.id,
+                    'filename': file_object.filename,
+                    'path': path_str
+                }
+                
+                uploaded_files.append(file_data)
+                
+                # 缓存文件信息
+                if use_cache:
+                    self._uploaded_files_cache[path_str] = file_data
+                
+                logger.info(f"✅ 文件上传成功: {path.name} (ID: {file_object.id})")
+                
+            except Exception as e:
+                logger.error(f"✗ 文件上传失败 {file_path}: {e}")
+                continue
+        
+        return uploaded_files
+    
     def query_direct(
         self,
         question: str,
         context: Optional[str] = None,
         enable_web_search: bool = None,
+        document_files: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         直接查询LLM（不使用向量库）
@@ -474,11 +566,13 @@ class AcademicAgent:
             question: 用户问题
             context: 可选的上下文信息（用户提供的文本）
             enable_web_search: 是否启用联网搜索
+            document_files: 可选的文档文件路径列表，作为附件发送给LLM
             
         Returns:
             包含查询结果的字典:
             - answer: LLM生成的答案
             - web_sources: 联网搜索结果（如果启用）
+            - document_sources: 使用的文档文件列表
             - metadata: 元数据信息
         """
         logger.info(LOG_SEPARATOR_HALF)
@@ -487,8 +581,24 @@ class AcademicAgent:
         
         start_time = datetime.now()
         web_sources = []
+        document_sources = []
+        uploaded_file_ids = []
         
         try:
+            # 处理文档附件 - 使用 Moonshot 文件上传
+            if document_files:
+                logger.info(f"📎 准备处理 {len(document_files)} 个文档附件...")
+                
+                # 尝试上传到 Moonshot
+                uploaded_files = self._upload_files_to_moonshot(document_files)
+                
+                if uploaded_files:
+                    document_sources = document_files
+                    uploaded_file_ids = [f['id'] for f in uploaded_files]
+                    logger.info(f"✅ 成功上传 {len(uploaded_files)} 个文件到 Moonshot")
+                else:
+                    logger.warning("⚠️ 文件上传失败，将回退到文本提取方式")
+            
             # 检查是否需要联网搜索（None 时使用配置的默认值）
             if enable_web_search is None:
                 enable_web_search = SystemConfig.ENABLE_WEB_SEARCH
@@ -511,24 +621,110 @@ class AcademicAgent:
                     logger.warning(f"联网搜索失败: {e}")
             
             # 构建提示词
-            prompt = question
+            prompt_parts = []
+            
+            # 添加用户提供的上下文
             if context:
-                prompt = f"根据以下上下文回答问题:\n\n上下文:\n{context}\n\n问题: {question}"
-            elif web_sources:
-                # 如果有网络搜索结果，添加到提示词
+                prompt_parts.append(f"补充上下文:\n{context}")
+            
+            # 添加网络搜索结果
+            if web_sources:
                 web_context = "\n\n".join([
                     f"来源 [{i+1}]: {s['title']}\n{s['snippet']}\n网址: {s['url']}"
                     for i, s in enumerate(web_sources)
                 ])
-                prompt = f"根据以下网络搜索结果回答问题:\n\n{web_context}\n\n问题: {question}"
+                prompt_parts.append(f"网络搜索结果:\n{web_context}")
             
-            # 直接调用LLM
+            # 构建完整提示词
+            if prompt_parts:
+                combined_parts = "\n\n" + ("="*50 + "\n\n").join(prompt_parts)
+                prompt = combined_parts + "\n\n" + "="*50 + f"\n\n问题: {question}"
+            else:
+                prompt = question
+            
+            # 调用LLM（带文件上传）
             logger.info("正在调用LLM生成回答...")
-            from llama_index.core import Settings
-            llm = Settings.llm
+            logger.debug(f"Prompt 包含 {len(prompt_parts)} 个部分，总长度: {len(prompt)} 字符")
             
-            response = llm.complete(prompt)
-            answer = str(response)
+            if uploaded_file_ids:
+                # 使用 OpenAI SDK 直接调用，支持文件附件
+                api_key = os.getenv("LLM_API_KEY")
+                api_base = os.getenv("LLM_API_BASE")
+                model = os.getenv("LLM_MODEL", "moonshot-v1-8k")
+                
+                client = OpenAI(api_key=api_key, base_url=api_base)
+                
+                # 获取文件内容 - 每个文件作为独立的 system 消息
+                logger.info(f"📥 正在获取 {len(uploaded_file_ids)} 个文件的内容...")
+                file_messages = []
+                for i, file_id in enumerate(uploaded_file_ids):
+                    try:
+                        file_content = client.files.content(file_id=file_id).text
+                        file_messages.append({
+                            "role": "system",
+                            "content": file_content
+                        })
+                        logger.info(f"✅ 成功获取文件内容 [{i+1}/{len(uploaded_file_ids)}] (ID: {file_id}，长度: {len(file_content)} 字符)")
+                    except Exception as e:
+                        logger.error(f"✗ 获取文件内容失败 (ID: {file_id}): {e}")
+                        continue
+                
+                if not file_messages:
+                    logger.warning("⚠️ 无法获取任何文件内容，将使用标准方式调用")
+                    # 回退到标准方式
+                    from llama_index.core import Settings
+                    llm = Settings.llm
+                    response = llm.complete(prompt)
+                    answer = str(response)
+                else:
+                    # 构建消息列表：使用 * 语法解构 file_messages，使其成为 messages 列表的前 N 条消息
+                    messages = [
+                        *file_messages,  # 解构所有文件内容消息
+                        {
+                            "role": "system",
+                            "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手。你会为用户提供安全，有帮助，准确的回答。同时，你会拒绝一切涉及恐怖主义，种族歧视，黄色暴力等问题的回答。"
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                    
+                    logger.debug(f"发送消息到 Moonshot API，包含 {len(file_messages)} 个文件内容")
+                    
+                    completion = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=0.3,
+                    )
+                    
+                    answer = completion.choices[0].message.content
+            else:
+                # 没有文件上传，直接调用 LLM API
+                api_key = os.getenv("LLM_API_KEY")
+                api_base = os.getenv("LLM_API_BASE")
+                model = os.getenv("LLM_MODEL", "moonshot-v1-8k")
+                
+                client = OpenAI(api_key=api_key, base_url=api_base)
+                
+                messages = [
+                    {
+                        "role": "system",
+                        "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手。你会为用户提供安全，有帮助，准确的回答。"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+                
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.3,
+                )
+                
+                answer = completion.choices[0].message.content
             
             # 计算耗时
             elapsed = (datetime.now() - start_time).total_seconds()
@@ -540,21 +736,25 @@ class AcademicAgent:
                 'answer': answer,
                 'source_nodes': [],  # 直接模式没有源节点
                 'web_sources': web_sources,
+                'document_sources': document_sources,
                 'metadata': {
                     'question': question,
                     'elapsed_time': elapsed,
                     'num_sources': 0,
                     'num_web_sources': len(web_sources),
+                    'num_document_sources': len(document_sources),
                     'mode': 'direct_llm',
                     'has_context': bool(context),
+                    'has_documents': bool(document_sources),
                     'web_search_enabled': enable_web_search,
+                    'uploaded_files': len(uploaded_file_ids),
                 }
             }
             
             return result
             
         except Exception as e:
-            logger.error(f"✗ 直接查询失败: {e}")
+            logger.error(f"✗ 直接查询失败: {e}", exc_info=True)
             raise
     
     def list_papers(self, detailed: bool = False) -> List[Dict[str, Any]]:
@@ -619,7 +819,95 @@ class AcademicAgent:
         
         return papers
     
-    def get_stats(self) -> Dict[str, Any]:
+    def _load_document_files(self, file_paths: List[str]) -> str:
+        """
+        读取文档文件内容，用于LLM直接模式
+        
+        Args:
+            file_paths: 文件路径列表（相对于documents_dir或绝对路径）
+            
+        Returns:
+            合并后的文档内容字符串
+        """
+        from src.loaders.document_loader import DocumentLoader
+        
+        all_content = []
+        
+        for file_path in file_paths:
+            try:
+                # 处理路径（支持相对和绝对路径）
+                path = Path(file_path)
+                if not path.is_absolute():
+                    path = self.documents_dir / path
+                
+                if not path.exists():
+                    logger.warning(f"⚠ 文件不存在: {path}")
+                    continue
+                
+                logger.debug(f"读取文件: {path.name}")
+                
+                # 使用 DocumentLoader 读取文件
+                loader = DocumentLoader(
+                    input_dir=path.parent,
+                    recursive=False,
+                    clean_text=True,
+                )
+                
+                # 根据文件类型加载
+                file_ext = path.suffix.lower()
+                if file_ext == '.pdf':
+                    docs = loader._load_pdf_files([path])
+                elif file_ext in ['.docx', '.doc']:
+                    docs = loader._load_docx_files([path])
+                elif file_ext == '.md':
+                    docs = loader._load_markdown_files([path])
+                elif file_ext == '.txt':
+                    docs = loader._load_text_files([path])
+                else:
+                    logger.warning(f"⚠ 不支持的文件格式: {file_ext}")
+                    continue
+                
+                # 合并文档内容
+                if docs:
+                    file_content = "\n\n".join([doc.text for doc in docs])
+                    # 添加文件标识
+                    all_content.append(f"=== 文件: {path.name} ===\n\n{file_content}")
+                    logger.info(f"✅ 成功读取 {path.name}, 字符数: {len(file_content)}")
+                else:
+                    logger.warning(f"⚠️ 文件为空: {path.name}")
+                
+            except Exception as e:
+                logger.error(f"✗ 读取文件失败 {file_path}: {e}", exc_info=True)
+                continue
+        
+        if not all_content:
+            logger.warning("⚠️ 没有成功读取任何文档")
+            return ""
+        
+        # 合并所有内容
+        final_content = "\n\n" + ("="*80 + "\n\n").join(all_content)
+        logger.info(f"📚 总共读取 {len(all_content)} 个文档，总字符数: {len(final_content)}")
+        return final_content
+    
+    def list_available_documents(self) -> List[str]:
+        """
+        列出 documents 目录下的所有可用文档
+        
+        Returns:
+            文档文件名列表
+        """
+        if not self.documents_dir.exists():
+            return []
+        
+        supported_exts = ['.pdf', '.docx', '.doc', '.md', '.txt']
+        files = []
+        
+        for ext in supported_exts:
+            files.extend([f.name for f in self.documents_dir.rglob(f'*{ext}')])
+        
+        return sorted(files)
+    
+    def get_statistics(self) -> Dict[str, Any]:
         """
         获取 Agent 统计信息
         
@@ -699,14 +987,64 @@ class AcademicAgent:
         # 限制历史长度
         max_messages = self.max_history_turns * 2
         if len(self.chat_history) > max_messages:
+            removed_turns = (len(self.chat_history) - max_messages) // 2
             self.chat_history = self.chat_history[-max_messages:]
+            logger.debug(f"历史超出限制，已移除最早的 {removed_turns} 轮对话")
         
-        logger.debug(f"对话历史已更新，当前轮数: {len(self.chat_history) // 2}")
+        logger.debug(f"对话历史已更新，当前轮数: {len(self.chat_history) // 2}/{self.max_history_turns}")
     
     def clear_chat_history(self):
         """清除对话历史"""
         self.chat_history = []
         logger.info("对话历史已清除")
+    
+    def set_max_history_turns(self, max_turns: int):
+        """
+        动态设置最大历史轮数
+        
+        Args:
+            max_turns: 最大保留历史轮数（必须 >= 1）
+        
+        Example:
+            >>> agent.set_max_history_turns(50)  # 保留最近50轮对话
+            >>> agent.set_max_history_turns(5)   # 只保留最近5轮
+        """
+        if max_turns < 1:
+            raise ValueError(f"max_turns 必须 >= 1，当前值: {max_turns}")
+        
+        old_value = self.max_history_turns
+        self.max_history_turns = max_turns
+        
+        # 如果新限制更小，立即裁剪历史
+        max_messages = max_turns * 2
+        if len(self.chat_history) > max_messages:
+            self.chat_history = self.chat_history[-max_messages:]
+            logger.info(f"历史轮数限制已更新: {old_value} -> {max_turns}，历史已裁剪至 {len(self.chat_history) // 2} 轮")
+        else:
+            logger.info(f"历史轮数限制已更新: {old_value} -> {max_turns}")
+    
+    def get_chat_history_info(self) -> Dict[str, Any]:
+        """
+        获取对话历史信息
+        
+        Returns:
+            包含当前轮数、最大限制、消息数的字典
+        
+        Example:
+            >>> info = agent.get_chat_history_info()
+            >>> print(f"当前 {info['current_turns']}/{info['max_turns']} 轮")
+        """
+        return {
+            'current_turns': len(self.chat_history) // 2,
+            'max_turns': self.max_history_turns,
+            'total_messages': len(self.chat_history),
+            'is_full': len(self.chat_history) >= self.max_history_turns * 2
+        }
+    
+    def clear_file_cache(self):
+        """清除文件上传缓存"""
+        self._uploaded_files_cache = {}
+        logger.info("文件上传缓存已清除")
     
     def get_chat_history(self) -> List[Dict[str, str]]:
         """

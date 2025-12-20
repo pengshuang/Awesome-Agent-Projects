@@ -8,6 +8,17 @@
 
 ---
 
+## 📖 文档导航
+
+| 文档 | 说明 | 适合人群 |
+|------|------|----------|
+| [README.md](README.md) | 项目主页、快速开始 | 所有用户 ⭐ |
+| [docs/FEATURES.md](docs/FEATURES.md) | 功能详细说明 | 想了解功能的用户 |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | 详细使用指南 | 普通用户 |
+| [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | 开发者指南、API 文档 | 开发者和贡献者 |
+
+---
+
 ## 🌟 核心特性
 
 | 特性 | 说明 |
@@ -134,6 +145,50 @@ for paper in papers; do
     python cli_single_turn.py query "总结 $paper"
 done
 ```
+
+### 📊 历史轮数控制
+
+多轮对话支持灵活控制保留的历史对话轮数，避免 Token 消耗过大。
+
+**4种控制方式：**
+
+1. **初始化时设置（推荐）**
+```python
+from src.agent import AcademicAgent
+
+# 只保留最近50轮
+agent = AcademicAgent(max_history_turns=50)
+```
+
+2. **运行时动态修改**
+```python
+agent.set_max_history_turns(20)  # 修改为20轮
+```
+
+3. **Web UI 可视化控制**
+   - 在「RAG 对话」标签页右侧找到「📊 对话历史控制」
+   - 调整滑块（1-50轮）
+   - 点击「✅ 更新历史设置」
+
+4. **环境变量配置**
+```bash
+# .env 文件中设置
+MAX_HISTORY_TURNS=50
+```
+
+**推荐配置：**
+- 快速问答：1-5轮（节省Token）
+- 一般对话：5-10轮（默认）
+- 深度讨论：20-30轮（保留上下文）
+- 长期对话：50+轮（完整记忆）
+
+💡 **查看状态：**
+```python
+info = agent.get_chat_history_info()
+print(f"{info['current_turns']}/{info['max_turns']} 轮")
+```
+
+详细文档见：[用户指南 - 历史轮数控制](docs/USER_GUIDE.md#历史轮数控制)
 
 ---
 
@@ -271,10 +326,30 @@ A:
 5. 提交 Pull Request
 
 ### 代码规范
-- 遵循 PEP 8
-- 添加类型注解
-- 编写文档字符串
-- 补充单元测试
+- ✅ 遵循 PEP 8 规范
+- ✅ Import 语句统一放在文件顶部
+- ✅ 添加类型注解和文档字符串
+- ✅ 补充单元测试（测试文件放在 `tests/` 目录）
+- ✅ 避免代码重复（DRY 原则）
+
+### 项目结构
+```
+academic-paper-qa/
+├── src/                # 核心源代码
+├── config/             # 配置模块
+├── tests/              # 测试文件
+├── examples/           # 示例代码
+├── docs/               # 文档
+│   ├── FEATURES.md     # 功能介绍
+│   ├── USER_GUIDE.md   # 使用指南
+│   └── DEVELOPER_GUIDE.md  # 开发指南
+└── data/               # 数据目录
+```
+
+**文档说明**：
+- 📋 [FEATURES.md](docs/FEATURES.md) - 详细的功能介绍
+- 📖 [USER_GUIDE.md](docs/USER_GUIDE.md) - 完整的使用指南
+- 👨‍💻 [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) - 开发者文档和 API 参考
 
 ---
 
@@ -305,6 +380,6 @@ A:
 
 **⭐ 如果这个项目对你有帮助，请给我们一个 Star！**
 
-[开始使用](docs/USER_GUIDE.md) · [查看文档](docs/FEATURES.md) · [报告问题](https://github.com/yourusername/academic-paper-qa/issues)
+[快速开始](#-快速开始3-步上手) · [查看文档](docs/USER_GUIDE.md) · [功能介绍](docs/FEATURES.md) · [开发指南](docs/DEVELOPER_GUIDE.md)
 
 </div>

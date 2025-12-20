@@ -6,6 +6,7 @@
 - [Web UI 使用](#web-ui-使用)
 - [命令行使用](#命令行使用)
 - [常见场景](#常见场景)
+- [历史轮数控制](#历史轮数控制)
 - [问题排查](#问题排查)
 
 ---
@@ -790,8 +791,267 @@ python main.py query "问题" --similarity-threshold 0.8
 
 ---
 
+## 历史轮数控制
+
+### 功能说明
+
+多轮对话模式支持灵活控制保留的历史对话轮数，避免 Token 消耗过大。
+
+**核心概念：**
+- 1轮对话 = 1条用户消息 + 1条助手回复 = 2条消息
+- 默认保留最近10轮对话（20条消息）
+- 可配置范围：1-50+轮
+
+### 使用方式
+
+#### 方式1: 初始化时设置（推荐）
+
+```python
+from src.agent import AcademicAgent
+
+# 只保留最近5轮对话
+agent = AcademicAgent(max_history_turns=5)
+
+# 保留50轮对话（长对话场景）
+agent = AcademicAgent(max_history_turns=50)
+
+# 使用默认值（10轮）
+agent = AcademicAgent()
+```
+
+#### 方式2: 运行时动态修改
+
+```python
+# 创建agent
+agent = AcademicAgent()
+
+# 查看当前设置
+print(f"最大轮数: {agent.max_history_turns}")
+
+# 动态修改为20轮
+agent.set_max_history_turns(20)
+
+# 修改为50轮
+agent.set_max_history_turns(50)
+
+# 查看当前状态
+info = agent.get_chat_history_info()
+print(f"当前: {info['current_turns']}/{info['max_turns']} 轮")
+print(f"消息数: {info['total_messages']} 条")
+print(f"已满: {info['is_full']}")
+```
+
+#### 方式3: Web UI 可视化控制
+
+**步骤：**
+
+1. **启动 Web UI**
+```bash
+python web_ui_multi_turn.py
+# 或
+./start_web_multi.sh
+```
+
+2. **在界面中调整**
+   - 进入「RAG 对话」标签页
+   - 在右侧设置栏找到「📊 对话历史控制」
+   - 使用滑块调整「最大历史轮数」（1-50轮）
+   - 点击「✅ 更新历史设置」按钮
+   - 查看「历史状态」显示当前轮数
+
+3. **查看系统状态**
+   - 进入「ℹ️ 系统信息」标签页
+   - 点击「🔄 刷新信息」
+   - 查看详细的对话历史信息
+
+#### 方式4: 环境变量配置
+
+在 `.env` 文件中设置：
+
+```bash
+# 设置默认历史轮数为50
+MAX_HISTORY_TURNS=50
+```
+
+系统启动时会自动读取此配置。
+
+### 查看和管理
+
+#### 查看历史状态
+
+```python
+# 获取详细信息
+info = agent.get_chat_history_info()
+
+print(f"当前轮数: {info['current_turns']}")
+print(f"最大限制: {info['max_turns']}")
+print(f"总消息数: {info['total_messages']}")
+print(f"是否已满: {info['is_full']}")
+```
+
+**返回字段说明：**
+- `current_turns`: 当前对话轮数
+- `max_turns`: 最大限制轮数
+- `total_messages`: 总消息数（轮数 × 2）
+- `is_full`: 是否已达上限
+
+#### 清空历史
+
+```python
+# 清空所有历史
+agent.clear_chat_history()
+```
+
+在 Web UI 中点击「🗑️ 清空对话历史」按钮。
+
+### 使用场景推荐
+
+| 场景 | 推荐轮数 | Token估算 | 适用情况 |
+|------|---------|-----------|---------|
+| 快速问答 | 1-5轮 | 最少 | 独立问题，节省成本 |
+| 一般对话 | 5-10轮 | 适中 | 默认配置，平衡体验 |
+| 深度讨论 | 20-30轮 | 较多 | 学术讨论，连续推理 |
+| 长期对话 | 50+轮 | 很多 | 完整记忆，特殊场景 |
+
+### 实际应用示例
+
+#### 示例1: 根据用户级别配置
+
+```python
+def create_agent_for_user(user_level: str):
+    """根据用户等级创建不同配置的agent"""
+    config = {
+        "free": 5,       # 免费用户：5轮
+        "basic": 15,     # 基础用户：15轮
+        "premium": 50    # 高级用户：50轮
+    }
+    
+    turns = config.get(user_level, 10)
+    return AcademicAgent(max_history_turns=turns)
+
+# 使用
+free_agent = create_agent_for_user("free")      # 5轮
+basic_agent = create_agent_for_user("basic")    # 15轮
+premium_agent = create_agent_for_user("premium") # 50轮
+```
+
+#### 示例2: 动态调整策略
+
+```python
+# 根据对话复杂度调整
+def adjust_history_by_complexity(agent, conversation_depth):
+    if conversation_depth == "simple":
+        agent.set_max_history_turns(5)
+    elif conversation_depth == "medium":
+        agent.set_max_history_turns(15)
+    else:  # complex
+        agent.set_max_history_turns(30)
+
+# 根据Token使用量调整
+def adjust_history_by_tokens(agent, total_tokens_used):
+    if total_tokens_used > 50000:
+        agent.set_max_history_turns(5)   # 降低消耗
+    elif total_tokens_used > 20000:
+        agent.set_max_history_turns(10)
+    else:
+        agent.set_max_history_turns(20)
+```
+
+#### 示例3: 定期清理策略
+
+```python
+# 切换话题时清空
+if user_says("换个话题"):
+    agent.clear_chat_history()
+    print("✅ 已切换到新话题")
+
+# 定期清空（避免上下文污染）
+if message_count % 50 == 0:
+    agent.clear_chat_history()
+    print("✅ 已自动清理历史")
+
+# 用户主动清空
+if user_command == "/clear":
+    agent.clear_chat_history()
+    print("✅ 历史已清空")
+```
+
+### Token 消耗计算
+
+```
+每轮Token ≈ 问题Token + 回答Token
+总Token = 当前问题 + Σ(历史轮次Token)
+
+示例（假设每轮500 Token）：
+- 5轮：  5 × 500 = 2,500 Token
+- 10轮：10 × 500 = 5,000 Token
+- 50轮：50 × 500 = 25,000 Token
+```
+
+### 最佳实践
+
+#### 1. 根据场景选择轮数
+
+```python
+# ❌ 不推荐：历史太长，Token浪费
+agent = AcademicAgent(max_history_turns=100)
+
+# ✅ 推荐：根据场景选择
+# 快速问答
+agent = AcademicAgent(max_history_turns=5)
+
+# 深度讨论
+agent = AcademicAgent(max_history_turns=20)
+
+# 特殊场景才使用大历史
+if need_long_memory:
+    agent = AcademicAgent(max_history_turns=50)
+```
+
+#### 2. 监控历史使用情况
+
+```python
+# 定期检查
+info = agent.get_chat_history_info()
+if info['is_full']:
+    print(f"⚠️  历史已满 ({info['current_turns']}/{info['max_turns']})")
+    print("提示：考虑清空历史或增加限制")
+```
+
+#### 3. 自适应调整
+
+```python
+# 根据实际使用动态调整
+def smart_adjust(agent):
+    info = agent.get_chat_history_info()
+    
+    # 历史快满时提醒
+    if info['current_turns'] >= info['max_turns'] * 0.8:
+        print("💡 提示：历史接近上限，可考虑清理")
+    
+    # 长时间未使用时重置
+    if idle_time > 3600:  # 1小时
+        agent.clear_chat_history()
+```
+
+### 常见问题
+
+**Q: 修改轮数后，现有历史会丢失吗？**  
+A: 如果减小轮数，会自动裁剪，只保留最近N轮。如果增大轮数，现有历史完全保留。
+
+**Q: 如何选择合适的轮数？**  
+A: 根据场景选择：简单问答用5轮，深度讨论用20-30轮，特殊场景用50+轮。
+
+**Q: 轮数对性能有什么影响？**  
+A: 轮数越多，每次请求的Token越多，响应时间和API成本都会增加。
+
+**Q: 1轮对话等于多少条消息？**  
+A: 1轮 = 1条用户消息 + 1条助手回复 = 2条消息。
+
+---
+
 ## 下一步
 
 - 👨‍💻 阅读 [开发者文档](DEVELOPER_GUIDE.md) 进行二次开发
 - 📋 查看 [功能介绍](FEATURES.md) 了解更多特性
-- 🚀 开始使用：`python web_ui.py`
+- 🚀 开始使用：`python web_ui_multi_turn.py`

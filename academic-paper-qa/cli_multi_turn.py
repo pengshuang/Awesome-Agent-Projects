@@ -195,10 +195,11 @@ def rag_chat_mode(agent: AcademicAgent):
 
 def direct_llm_mode(agent: AcademicAgent):
     """
-    直接 LLM 对话模式（不使用 RAG，支持多轮对话）
+    直接 LLM 对话模式（不使用 RAG，支持多轮对话和文档附件）
     """
     print(f"\n{Colors.BOLD}{Colors.GREEN}💬 进入直接对话模式（纯 LLM）{Colors.END}")
     print(f"\n{Colors.YELLOW}💡 命令说明:{Colors.END}")
+    print(f"  • {Colors.CYAN}'attach'{Colors.END} - 选择文档作为附件")
     print(f"  • {Colors.CYAN}'clear'{Colors.END}  - 清除对话历史")
     print(f"  • {Colors.CYAN}'history'{Colors.END} - 查看对话历史")
     print(f"  • {Colors.CYAN}'quit'{Colors.END}   - 退出对话\n")
@@ -206,11 +207,13 @@ def direct_llm_mode(agent: AcademicAgent):
     # 为 LLM 模式创建独立的历史
     llm_history = []
     question_count = 0
+    attached_docs = []  # 存储附加的文档
     
     while True:
         print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.END}")
         history_info = f"对话轮数: {len(llm_history) // 2}" if llm_history else "新对话"
-        print(f"{Colors.BOLD}{Colors.PURPLE}💬 对话 #{question_count + 1} | {history_info}{Colors.END}")
+        docs_info = f" | 附件: {len(attached_docs)}" if attached_docs else ""
+        print(f"{Colors.BOLD}{Colors.PURPLE}💬 对话 #{question_count + 1} | {history_info}{docs_info}{Colors.END}")
         print(f"{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.END}")
         
         print(f"\n{Colors.YELLOW}请输入问题: {Colors.END}", end="")
@@ -227,7 +230,41 @@ def direct_llm_mode(agent: AcademicAgent):
         if question.lower() in ['clear', '清除']:
             llm_history = []
             question_count = 0
+            attached_docs = []
             print(f"\n{Colors.GREEN}✅ 对话历史已清除{Colors.END}")
+            continue
+        
+        if question.lower() in ['attach', '附件']:
+            # 显示可用文档
+            available_docs = agent.list_available_documents()
+            if not available_docs:
+                print(f"\n{Colors.RED}⚠ 没有可用的文档{Colors.END}")
+                continue
+            
+            print(f"\n{Colors.BOLD}{Colors.CYAN}📚 可用文档:{Colors.END}")
+            for i, doc in enumerate(available_docs, 1):
+                attached_marker = " ✓" if doc in attached_docs else ""
+                print(f"  [{i}] {doc}{Colors.GREEN}{attached_marker}{Colors.END}")
+            
+            print(f"\n{Colors.YELLOW}请输入文档编号（多个用逗号分隔，0清除，回车取消）: {Colors.END}", end="")
+            choice = input().strip()
+            
+            if not choice:
+                continue
+            
+            if choice == '0':
+                attached_docs = []
+                print(f"\n{Colors.GREEN}✅ 已清除所有附件{Colors.END}")
+                continue
+            
+            try:
+                indices = [int(x.strip()) for x in choice.split(',')]
+                attached_docs = [available_docs[i-1] for i in indices if 0 < i <= len(available_docs)]
+                print(f"\n{Colors.GREEN}✅ 已选择 {len(attached_docs)} 个文档作为附件{Colors.END}")
+                for doc in attached_docs:
+                    print(f"  📎 {doc}")
+            except (ValueError, IndexError):
+                print(f"\n{Colors.RED}⚠ 无效的输入{Colors.END}")
             continue
         
         if question.lower() in ['history', '历史']:
@@ -260,7 +297,11 @@ def direct_llm_mode(agent: AcademicAgent):
         
         try:
             start_time = datetime.now()
-            result = agent.query_direct(context, enable_web_search=False)
+            result = agent.query_direct(
+                question=context, 
+                enable_web_search=False,
+                document_files=attached_docs if attached_docs else None
+            )
             elapsed = (datetime.now() - start_time).total_seconds()
             
             print(f"\r{' ' * 50}\r", end="")
@@ -277,6 +318,12 @@ def direct_llm_mode(agent: AcademicAgent):
             print_separator("=", 70)
             print(f"{answer}")
             print_separator("=", 70)
+            
+            # 显示文档来源
+            if result.get('document_sources'):
+                print(f"\n{Colors.CYAN}📎 使用的文档附件:{Colors.END}")
+                for doc in result['document_sources']:
+                    print(f"  • {doc}")
             
             print(f"\n{Colors.CYAN}📊 耗时: {elapsed:.2f} 秒{Colors.END}")
         

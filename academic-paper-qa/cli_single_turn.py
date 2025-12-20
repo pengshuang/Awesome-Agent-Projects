@@ -216,7 +216,7 @@ def chat_mode(agent: AcademicAgent):
 
 def direct_llm_mode(agent: AcademicAgent):
     """
-    对话模式 (LLM) - 基于大模型通用知识
+    对话模式 (LLM) - 基于大模型通用知识（支持文档附件）
     
     Args:
         agent: AcademicAgent 实例
@@ -226,15 +226,25 @@ def direct_llm_mode(agent: AcademicAgent):
     print(f"{Colors.GREEN}提示：{Colors.END}")
     print(f"  • 输入问题，系统将直接使用大模型的通用知识回答")
     print(f"  • 不依赖本地文档，适合一般性问题")
+    print(f"  • 可以选择文档作为附件发送给 LLM")
     print(f"  • 每次提问可选择是否联网搜索增强答案")
+    print(f"  • 输入 {Colors.YELLOW}'attach'{Colors.END} 选择文档附件")
     print(f"  • 输入 {Colors.YELLOW}'exit'{Colors.END} 或 {Colors.YELLOW}'quit'{Colors.END} 返回主菜单")
     print_separator("-")
     print()
     
     question_count = 0
+    attached_docs = []  # 存储附加的文档
     
     while True:
         try:
+            # 显示当前附件状态
+            if attached_docs:
+                print(f"{Colors.GREEN}📎 当前附件: {len(attached_docs)} 个{Colors.END}")
+                for doc in attached_docs:
+                    print(f"  • {doc}")
+                print()
+            
             # 获取用户问题
             print(f"{Colors.BOLD}{Colors.BLUE}您的问题:{Colors.END} ", end="")
             question = input().strip()
@@ -247,22 +257,71 @@ def direct_llm_mode(agent: AcademicAgent):
                 print_success("退出对话模式")
                 break
             
+            # 处理附件命令
+            if question.lower() in ['attach', 'attachment', '附件']:
+                # 显示可用文档
+                available_docs = agent.list_available_documents()
+                if not available_docs:
+                    print_warning("没有可用的文档")
+                    continue
+                
+                print(f"\n{Colors.BOLD}{Colors.CYAN}📚 可用文档:{Colors.END}")
+                for i, doc in enumerate(available_docs, 1):
+                    attached_marker = f" {Colors.GREEN}✓{Colors.END}" if doc in attached_docs else ""
+                    print(f"  [{i}] {doc}{attached_marker}")
+                
+                print(f"\n{Colors.YELLOW}请输入文档编号（多个用逗号分隔，0清除，回车取消）: {Colors.END}", end="")
+                choice = input().strip()
+                
+                if not choice:
+                    continue
+                
+                if choice == '0':
+                    attached_docs = []
+                    print_success("已清除所有附件")
+                    continue
+                
+                try:
+                    indices = [int(x.strip()) for x in choice.split(',')]
+                    attached_docs = [available_docs[i-1] for i in indices if 0 < i <= len(available_docs)]
+                    print_success(f"已选择 {len(attached_docs)} 个文档作为附件")
+                    for doc in attached_docs:
+                        print(f"  📎 {doc}")
+                except (ValueError, IndexError):
+                    print_error("无效的输入")
+                continue
+            
             # 询问是否联网搜索
             print(f"\n{Colors.YELLOW}是否启用联网搜索增强? (y/n，直接回车默认不启用): {Colors.END}", end="")
             web_choice = input().strip().lower()
             enable_web = web_choice in ['y', 'yes', '是']
             
             # 执行查询
+            status_msg = "🤔 正在思考"
             if enable_web:
-                print(f"\n{Colors.CYAN}🤔 正在思考（联网搜索已启用）...{Colors.END}")
-            else:
-                print(f"\n{Colors.CYAN}🤔 正在思考...{Colors.END}")
+                status_msg += "（联网搜索已启用）"
+            if attached_docs:
+                status_msg += f"（附件: {len(attached_docs)}个）"
+            print(f"\n{Colors.CYAN}{status_msg}...{Colors.END}")
             
             start_time = datetime.now()
-            result = agent.query_direct(question, context=None, enable_web_search=enable_web)
+            result = agent.query_direct(
+                question=question, 
+                context=None, 
+                enable_web_search=enable_web,
+                document_files=attached_docs if attached_docs else None
+            )
             elapsed = (datetime.now() - start_time).total_seconds()
             
             question_count += 1
+            
+            # 显示文档附件信息
+            if result.get('document_sources'):
+                print(f"\n{Colors.BOLD}{Colors.BLUE}📎 使用的文档附件:{Colors.END}")
+                print_separator("-", 70)
+                for doc in result['document_sources']:
+                    print(f"  • {doc}")
+                print()
             
             # 显示网络搜索结果（如果启用）
             if result.get('web_sources'):

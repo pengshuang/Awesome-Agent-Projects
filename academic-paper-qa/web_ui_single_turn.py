@@ -224,7 +224,27 @@ def build_index(input_dir: str, force_rebuild: bool = True) -> str:
 """
 
 
-def query_question(question: str, mode: str, enable_web_search: bool, top_k: int) -> str:
+def get_available_documents():
+    """获取可用文档列表"""
+    global AGENT, INITIALIZED
+    
+    try:
+        # 确保有 agent 实例（即使没有构建索引也可以列出文档）
+        if not INITIALIZED:
+            initialize_system()
+            INITIALIZED = True
+        
+        if AGENT is None:
+            from src.agent import AcademicAgent
+            AGENT = AcademicAgent(documents_dir=DOCUMENTS_PATH, auto_load=False)
+        
+        return AGENT.list_available_documents()
+    except Exception as e:
+        print(f"获取文档列表失败: {e}")
+        return []
+
+
+def query_question(question: str, mode: str, enable_web_search: bool, top_k: int, selected_docs: list) -> str:
     """
     查询问题 - 支持 RAG 和 LLM 两种模式
     
@@ -233,6 +253,7 @@ def query_question(question: str, mode: str, enable_web_search: bool, top_k: int
         mode: 查询模式（"RAG 模式" 或 "LLM 模式"）
         enable_web_search: 是否启用联网搜索
         top_k: 检索文档数量（仅 RAG 模式）
+        selected_docs: 选中的文档列表（仅 LLM 模式使用）
     """
     global AGENT, INDEX_BUILT, INITIALIZED
     
@@ -247,39 +268,46 @@ def query_question(question: str, mode: str, enable_web_search: bool, top_k: int
                 initialize_system()
                 INITIALIZED = True
             
-            # 直接使用 LlamaIndex Settings 中的 LLM
-            from llama_index.core import Settings
+            # 确保 AGENT 存在（即使没有索引）
+            if AGENT is None:
+                from src.agent import AcademicAgent
+                AGENT = AcademicAgent(documents_dir=DOCUMENTS_PATH, auto_load=False)
             
-            # 构建提示词
-            if enable_web_search:
-                prompt = f"请根据最新信息回答以下问题:\n\n{question}"
-            else:
-                prompt = question
-            
-            # 直接调用 LLM
-            llm = Settings.llm
-            response = llm.complete(prompt)
-            answer = str(response)
-            
-            result = {
-                'answer': answer,
-                'web_sources': []
-            }
+            # 使用 query_direct 方法（支持文档附件）
+            result = AGENT.query_direct(
+                question=question,
+                enable_web_search=enable_web_search,
+                document_files=selected_docs if selected_docs else None
+            )
             
             # 提取答案
             if isinstance(result, dict):
                 answer = result.get('answer', str(result))
                 web_sources = result.get('web_sources', [])
+                document_sources = result.get('document_sources', [])
+                metadata = result.get('metadata', {})
             else:
                 answer = str(result)
                 web_sources = []
+                document_sources = []
+                metadata = {}
             
             # 添加模式标识
             response = f"🤖 **LLM 直接对话模式**\n"
             if enable_web_search:
                 response += "🌐 **已启用联网搜索**\n"
+            if document_sources:
+                response += f"📎 **已附加 {len(document_sources)} 个文档**\n"
             response += "\n" + "=" * 70 + "\n\n"
             response += answer
+            
+            # 添加文档附件信息
+            if document_sources:
+                response += "\n\n" + "=" * 70
+                response += "\n📎 使用的文档附件:\n" + "=" * 70 + "\n"
+                for i, doc in enumerate(document_sources, 1):
+                    response += f"\n【文档 {i}】\n"
+                    response += f"📄 文件: {doc}\n"
             
             # 添加网络来源信息
             if web_sources:
@@ -399,12 +427,16 @@ interface_qa = gr.Interface(
             step=1,
             label="📊 检索文档数量 (Top-K)",
             info="仅 RAG 模式有效，控制返回的相关文档数量"
+        ),
+        gr.CheckboxGroup(
+            choices=get_available_documents(),
+            label="📎 附加文档 (仅 LLM 模式)",
+            info="选择要作为附件发送给 LLM 的文档"
         )
     ],
     outputs=gr.Textbox(
         lines=25,
-        label="💬 回答",
-        show_copy_button=True
+        label="💬 回答"
     ),
     title="💬 智能问答",
     description="""
@@ -414,16 +446,17 @@ interface_qa = gr.Interface(
       * 如显示「✅ 已自动加载」则可直接使用，无需手动构建
       * 如显示「ℹ️ 未发现已有索引」则需先在「构建索引」标签页构建
     - **LLM 模式**: 直接与大语言模型对话，无需构建索引
+      * 支持附加文档：可选择 data/documents 目录下的文档作为附件发送给 LLM
+      * 文档会通过 Moonshot API 上传并提取内容，供 LLM 分析
     - **联网搜索**: 可选功能，两种模式均支持，获取实时网络信息
     """,
     examples=[
-        ["请总结这篇论文的主要贡献", "RAG 模式", False, 3],
-        ["这篇论文使用了什么研究方法？", "RAG 模式", False, 3],
-        ["什么是大语言模型？", "LLM 模式", False, 3],
-        ["最新的 AI 技术趋势是什么？", "LLM 模式", True, 3],
-        ["解释一下 Transformer 架构", "RAG 模式", True, 5]
+        ["请总结这篇论文的主要贡献", "RAG 模式", False, 3, []],
+        ["这篇论文使用了什么研究方法？", "RAG 模式", False, 3, []],
+        ["什么是大语言模型？", "LLM 模式", False, 3, []],
+        ["最新的 AI 技术趋势是什么？", "LLM 模式", True, 3, []],
+        ["解释一下 Transformer 架构", "RAG 模式", True, 5, []]
     ],
-    allow_flagging="never",
     cache_examples=False
 )
 
@@ -462,16 +495,14 @@ interface_build = gr.Interface(
     4. 点击「提交」按钮开始构建
     5. 查看详细的文件统计信息
     6. 构建成功后，前往「问答」标签页使用 RAG 模式
-    """,
-    allow_flagging="never"
+    """
 )
 
 # 组合两个标签页
 demo = gr.TabbedInterface(
     [interface_qa, interface_build],
     tab_names=["💬 问答", "📚 构建索引"],
-    title="📑 学术论文问答系统",
-    theme=gr.themes.Soft()
+    title="📑 学术论文问答系统"
 )
 
 
