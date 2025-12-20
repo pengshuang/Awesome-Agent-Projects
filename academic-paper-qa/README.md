@@ -148,33 +148,7 @@ done
 
 ### 📊 历史轮数控制
 
-多轮对话支持灵活控制保留的历史对话轮数，避免 Token 消耗过大。
-
-**4种控制方式：**
-
-1. **初始化时设置（推荐）**
-```python
-from src.agent import AcademicAgent
-
-# 只保留最近50轮
-agent = AcademicAgent(max_history_turns=50)
-```
-
-2. **运行时动态修改**
-```python
-agent.set_max_history_turns(20)  # 修改为20轮
-```
-
-3. **Web UI 可视化控制**
-   - 在「RAG 对话」标签页右侧找到「📊 对话历史控制」
-   - 调整滑块（1-50轮）
-   - 点击「✅ 更新历史设置」
-
-4. **环境变量配置**
-```bash
-# .env 文件中设置
-MAX_HISTORY_TURNS=50
-```
+多轮对话支持灵活控制保留的历史对话轮数（1-50+轮可调），避免 Token 消耗过大。
 
 **推荐配置：**
 - 快速问答：1-5轮（节省Token）
@@ -182,30 +156,27 @@ MAX_HISTORY_TURNS=50
 - 深度讨论：20-30轮（保留上下文）
 - 长期对话：50+轮（完整记忆）
 
-💡 **查看状态：**
-```python
-info = agent.get_chat_history_info()
-print(f"{info['current_turns']}/{info['max_turns']} 轮")
-```
+**配置方式：**
+- Web UI 界面调节
+- 代码初始化时设置
+- 环境变量 `MAX_HISTORY_TURNS`
 
-详细文档见：[用户指南 - 历史轮数控制](docs/USER_GUIDE.md#历史轮数控制)
+详细说明见：[用户指南 - 历史轮数控制](docs/USER_GUIDE.md#历史轮数控制)
 
 ---
 
 ## 📖 使用示例
 
-### 场景 1：快速理解新论文
+### 快速上手
 
 ```bash
 # 1. 添加论文到文档目录
-cp ~/Downloads/transformer_paper.pdf ./data/documents/
+cp ~/Downloads/paper.pdf ./data/documents/
 
-# 2. 启动 Web UI（多轮对话模式）
+# 2. 启动 Web UI
 ./start_web_multi.sh
 
-# 3. 在界面中：
-#    - 首次使用：点击「构建索引」
-#    - 在对话框中提问
+# 3. 构建索引 → 开始提问
 ```
 
 **对话示例：**
@@ -215,33 +186,9 @@ cp ~/Downloads/transformer_paper.pdf ./data/documents/
 
 👤: 它解决了什么问题？
 🤖: Transformer 主要解决了 RNN 的序列依赖问题...
-
-👤: 具体的技术细节是什么？
-🤖: 核心技术是自注意力机制（Self-Attention）...
 ```
 
-### 场景 2：文献综述
-
-```bash
-# 1. 批量添加论文
-cp ~/Downloads/nlp_papers/*.pdf ./data/documents/
-
-# 2. 使用命令行多轮对话
-./start_cli_multi.sh
-
-# 3. 对比分析
-> 这些论文的研究方法有什么区别？
-> 哪些论文关注 Transformer 架构？
-> 它们的实验效果如何？
-```
-
-### 场景 3：跟踪最新进展
-
-```bash
-# 使用 Web UI，启用联网搜索
-# 在高级设置中勾选「启用网络搜索」
-# 提问：2024年 Transformer 有哪些新进展？
-```
+更多应用场景请参考：[功能介绍](docs/FEATURES.md#应用场景) 和 [使用指南](docs/USER_GUIDE.md#常见场景)
 
 ---
 
