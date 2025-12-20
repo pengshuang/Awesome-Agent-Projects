@@ -1,0 +1,261 @@
+"""
+文档加载器使用示例
+
+演示 DocumentLoader 的各种功能
+"""
+
+import sys
+from pathlib import Path
+
+# 添加项目根目录到 Python 路径
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.loaders.document_loader import DocumentLoader
+from loguru import logger
+
+
+def example_1_load_directory():
+    """示例 1: 加载目录下所有文档"""
+    
+    print("\n" + "=" * 60)
+    print("示例 1: 加载目录下所有文档")
+    print("=" * 60)
+    
+    # 创建加载器
+    loader = DocumentLoader(
+        input_dir="./data/documents",
+        recursive=True,          # 递归加载子目录
+        clean_text=True,         # 启用文本清洗
+        preserve_formatting=True # 保留格式信息
+    )
+    
+    # 加载所有文档
+    documents = loader.load_documents()
+    
+    print(f"\n成功加载 {len(documents)} 个文档")
+    
+    # 显示前 3 个文档的信息
+    for i, doc in enumerate(documents[:3], 1):
+        print(f"\n文档 {i}:")
+        print(f"  文件名: {doc.metadata.get('file_name')}")
+        print(f"  类型: {doc.metadata.get('file_type')}")
+        print(f"  大小: {doc.metadata.get('file_size_mb')} MB")
+        print(f"  字符数: {doc.metadata.get('char_count')}")
+        print(f"  内容预览: {doc.text[:100]}...")
+    
+    # 打印统计信息
+    loader.print_stats(documents)
+
+
+def example_2_load_specific_types():
+    """示例 2: 只加载特定类型的文档"""
+    
+    print("\n" + "=" * 60)
+    print("示例 2: 只加载 PDF 文档")
+    print("=" * 60)
+    
+    loader = DocumentLoader(
+        input_dir="./data/documents",
+        recursive=True,
+    )
+    
+    # 只加载 PDF 文件
+    documents = loader.load_documents(
+        file_extensions=['.pdf']
+    )
+    
+    print(f"\n找到 {len(documents)} 个 PDF 文档")
+    
+    # 统计信息
+    stats = loader.get_document_stats(documents)
+    print(f"总页数: {stats['total_documents']}")
+    print(f"总大小: {stats['total_size_mb']} MB")
+
+
+def example_3_load_single_file():
+    """示例 3: 加载单个文件"""
+    
+    print("\n" + "=" * 60)
+    print("示例 3: 加载单个文件")
+    print("=" * 60)
+    
+    loader = DocumentLoader()
+    
+    # 指定文件路径
+    file_path = "./data/documents/sample.pdf"
+    
+    try:
+        documents = loader.load_single_document(file_path)
+        
+        print(f"\n成功加载文件: {file_path}")
+        print(f"生成文档数: {len(documents)}")
+        
+        for i, doc in enumerate(documents, 1):
+            print(f"\n第 {i} 页/段:")
+            print(f"  字符数: {doc.metadata.get('char_count')}")
+            print(f"  单词数: {doc.metadata.get('word_count')}")
+            if 'page_number' in doc.metadata:
+                print(f"  页码: {doc.metadata['page_number']}/{doc.metadata['total_pages']}")
+    
+    except FileNotFoundError:
+        print(f"\n文件不存在: {file_path}")
+    except Exception as e:
+        print(f"\n加载失败: {e}")
+
+
+def example_4_text_cleaning():
+    """示例 4: 文本清洗对比"""
+    
+    print("\n" + "=" * 60)
+    print("示例 4: 文本清洗对比")
+    print("=" * 60)
+    
+    # 不清洗文本
+    loader_no_clean = DocumentLoader(clean_text=False)
+    
+    # 清洗文本
+    loader_with_clean = DocumentLoader(
+        clean_text=True,
+        preserve_formatting=True
+    )
+    
+    file_path = "./data/documents/sample.md"
+    
+    try:
+        # 加载未清洗的文本
+        docs_no_clean = loader_no_clean.load_single_document(file_path)
+        
+        # 加载清洗后的文本
+        docs_with_clean = loader_with_clean.load_single_document(file_path)
+        
+        if docs_no_clean and docs_with_clean:
+            print("\n原始文本（前 200 字符）:")
+            print(docs_no_clean[0].text[:200])
+            
+            print("\n清洗后文本（前 200 字符）:")
+            print(docs_with_clean[0].text[:200])
+            
+            print(f"\n原始文本长度: {len(docs_no_clean[0].text)}")
+            print(f"清洗后文本长度: {len(docs_with_clean[0].text)}")
+    
+    except FileNotFoundError:
+        print(f"\n文件不存在: {file_path}")
+
+
+def example_5_metadata_extraction():
+    """示例 5: 元数据提取"""
+    
+    print("\n" + "=" * 60)
+    print("示例 5: 元数据提取")
+    print("=" * 60)
+    
+    loader = DocumentLoader()
+    
+    # 加载文档
+    documents = loader.load_documents("./data/documents")
+    
+    if documents:
+        # 显示第一个文档的所有元数据
+        doc = documents[0]
+        
+        print("\n文档元数据:")
+        for key, value in sorted(doc.metadata.items()):
+            print(f"  {key}: {value}")
+
+
+def example_6_recursive_vs_non_recursive():
+    """示例 6: 递归加载 vs 非递归加载"""
+    
+    print("\n" + "=" * 60)
+    print("示例 6: 递归 vs 非递归加载")
+    print("=" * 60)
+    
+    # 非递归
+    loader_non_recursive = DocumentLoader(recursive=False)
+    docs_non_recursive = loader_non_recursive.load_documents("./data/documents")
+    
+    # 递归
+    loader_recursive = DocumentLoader(recursive=True)
+    docs_recursive = loader_recursive.load_documents("./data/documents")
+    
+    print(f"\n非递归加载: {len(docs_non_recursive)} 个文档")
+    print(f"递归加载: {len(docs_recursive)} 个文档")
+
+
+def example_7_error_handling():
+    """示例 7: 错误处理"""
+    
+    print("\n" + "=" * 60)
+    print("示例 7: 错误处理")
+    print("=" * 60)
+    
+    loader = DocumentLoader()
+    
+    # 测试各种错误情况
+    test_cases = [
+        ("不存在的目录", "./non_existent_dir"),
+        ("不存在的文件", "./non_existent_file.pdf"),
+        ("不支持的格式", "./test.xyz"),
+    ]
+    
+    for name, path in test_cases:
+        print(f"\n测试: {name}")
+        try:
+            if Path(path).suffix:  # 是文件
+                loader.load_single_document(path)
+            else:  # 是目录
+                loader.load_documents(path)
+            print("  ✓ 成功（不应该发生）")
+        except FileNotFoundError as e:
+            print(f"  ✓ 正确捕获 FileNotFoundError: {e}")
+        except ValueError as e:
+            print(f"  ✓ 正确捕获 ValueError: {e}")
+        except Exception as e:
+            print(f"  ✓ 捕获异常: {type(e).__name__}: {e}")
+
+
+def main():
+    """运行所有示例"""
+    
+    print("=" * 60)
+    print("文档加载器使用示例")
+    print("=" * 60)
+    
+    examples = [
+        ("加载目录下所有文档", example_1_load_directory),
+        ("只加载特定类型", example_2_load_specific_types),
+        ("加载单个文件", example_3_load_single_file),
+        ("文本清洗对比", example_4_text_cleaning),
+        ("元数据提取", example_5_metadata_extraction),
+        ("递归 vs 非递归", example_6_recursive_vs_non_recursive),
+        ("错误处理", example_7_error_handling),
+    ]
+    
+    print("\n请选择要运行的示例:")
+    for i, (name, _) in enumerate(examples, 1):
+        print(f"  {i}. {name}")
+    print(f"  {len(examples) + 1}. 运行所有示例")
+    
+    try:
+        choice = input("\n请输入选项 (1-{}): ".format(len(examples) + 1)).strip()
+        choice = int(choice)
+        
+        if 1 <= choice <= len(examples):
+            examples[choice - 1][1]()
+        elif choice == len(examples) + 1:
+            for name, func in examples:
+                try:
+                    func()
+                except Exception as e:
+                    print(f"\n示例 '{name}' 运行出错: {e}")
+        else:
+            print("无效选项")
+    
+    except ValueError:
+        print("无效输入")
+    except KeyboardInterrupt:
+        print("\n\n已取消")
+
+
+if __name__ == "__main__":
+    main()

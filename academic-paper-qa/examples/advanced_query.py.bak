@@ -1,0 +1,152 @@
+"""
+高级查询示例
+
+演示元数据过滤、Reranking、Web 搜索等高级功能
+"""
+
+import sys
+from pathlib import Path
+
+# 添加项目根目录到 Python 路径
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import initialize_settings, SystemConfig
+from src.indexing import DocumentIndexer
+from src.query import RAGPipeline
+from src.tools import WebSearchTool
+
+
+def demo_metadata_filtering():
+    """演示元数据过滤"""
+    
+    print("\n" + "=" * 60)
+    print("示例 1: 元数据过滤查询")
+    print("=" * 60)
+    
+    # 初始化系统
+    initialize_settings()
+    
+    # 加载索引
+    indexer = DocumentIndexer()
+    index = indexer.load_index()
+    
+    # 创建 RAG Pipeline
+    pipeline = RAGPipeline(index=index)
+    
+    # 执行查询
+    query = "深度学习的最新进展"
+    result = pipeline.query_with_sources(query)
+    
+    print(f"\n问题: {query}")
+    print(f"\n回答:\n{result['answer']}\n")
+    
+    if result['sources']:
+        print("来源:")
+        for i, source in enumerate(result['sources'], 1):
+            print(f"  {i}. {source['file_name']} (分数: {source['score']:.3f})")
+
+
+def demo_web_search():
+    """演示 Web 搜索"""
+    
+    print("\n" + "=" * 60)
+    print("示例 2: Web 搜索")
+    print("=" * 60)
+    
+    if not SystemConfig.ENABLE_WEB_SEARCH:
+        print("Web 搜索未启用，请在 .env 中设置 ENABLE_WEB_SEARCH=true")
+        return
+    
+    # 创建 Web 搜索工具
+    search_tool = WebSearchTool(max_results=3)
+    
+    # 执行搜索
+    query = "LlamaIndex 最新特性"
+    print(f"\n搜索: {query}")
+    
+    results = search_tool.search(query)
+    
+    print(f"\n找到 {len(results)} 个结果:\n")
+    for i, result in enumerate(results, 1):
+        print(f"{i}. {result['title']}")
+        print(f"   {result['url']}")
+        print(f"   {result['snippet'][:100]}...\n")
+
+
+def demo_rag_with_sources():
+    """演示带来源的 RAG 查询"""
+    
+    print("\n" + "=" * 60)
+    print("示例 3: RAG 查询（带来源）")
+    print("=" * 60)
+    
+    # 初始化系统
+    initialize_settings()
+    
+    # 加载索引
+    indexer = DocumentIndexer()
+    index = indexer.load_index()
+    
+    # 创建 RAG Pipeline
+    pipeline = RAGPipeline(
+        index=index,
+        top_k=3,
+        response_mode="tree_summarize"  # 使用树形摘要模式
+    )
+    
+    # 执行查询
+    query = "论文中提到的主要方法是什么？"
+    result = pipeline.query_with_sources(query)
+    
+    print(f"\n问题: {query}")
+    print(f"\n回答:\n{result['answer']}\n")
+    
+    if result['sources']:
+        print("详细来源:")
+        for i, source in enumerate(result['sources'], 1):
+            print(f"\n  [{i}] 文件: {source['file_name']}")
+            print(f"      相似度: {source['score']:.3f}")
+            print(f"      内容片段: {source['text']}")
+
+
+def main():
+    """主函数"""
+    
+    print("=" * 60)
+    print("学术论文问答系统 - 高级查询示例")
+    print("=" * 60)
+    
+    # 检查索引是否存在
+    try:
+        print("\n请选择要运行的示例:")
+        print("1. 元数据过滤查询")
+        print("2. Web 搜索")
+        print("3. RAG 查询（带来源）")
+        print("4. 运行所有示例")
+        
+        choice = input("\n请输入选项 (1-4): ").strip()
+        
+        if choice == "1":
+            demo_metadata_filtering()
+        elif choice == "2":
+            demo_web_search()
+        elif choice == "3":
+            demo_rag_with_sources()
+        elif choice == "4":
+            demo_metadata_filtering()
+            demo_web_search()
+            demo_rag_with_sources()
+        else:
+            print("无效选项")
+        
+        print("\n" + "=" * 60)
+        print("示例运行完成！")
+        print("=" * 60)
+    
+    except Exception as e:
+        print(f"\n运行示例时出错: {e}")
+        print("请确保已经运行 build_index.py 构建了索引")
+
+
+if __name__ == "__main__":
+    main()
