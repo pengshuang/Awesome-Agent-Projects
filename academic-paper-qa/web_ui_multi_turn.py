@@ -406,7 +406,9 @@ def main():
                     with gr.Column(scale=3):
                         chatbot_rag = gr.Chatbot(
                             label="对话窗口",
-                            height=450
+                            height=450,
+                            type="messages",
+                            render_markdown=True
                         )
                     
                     with gr.Column(scale=1):
@@ -491,7 +493,9 @@ def main():
                     with gr.Column(scale=3):
                         chatbot_direct = gr.Chatbot(
                             label="对话窗口",
-                            height=450
+                            height=450,
+                            type="messages",
+                            render_markdown=True
                         )
                     
                     with gr.Column(scale=1):

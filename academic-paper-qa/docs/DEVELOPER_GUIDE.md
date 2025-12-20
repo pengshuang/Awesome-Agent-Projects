@@ -63,6 +63,7 @@ academic-paper-qa/
 ├── ⚙️ 配置 (config/)
 │   ├── __init__.py
 │   ├── llm_config.py               # LLM 配置
+│   ├── prompts.py                  # Prompt 模板管理 ⭐
 │   └── settings.py                 # 全局设置
 │
 ├── 📚 文档 (docs/)
@@ -817,6 +818,124 @@ llm = get_llm(
     api_base="https://api.moonshot.cn/v1",
     model="moonshot-v1-8k"
 )
+```
+
+#### 4.3 Prompt 配置 ⭐
+
+**位置**: `config/prompts.py`
+
+统一管理所有访问第三方大模型 API 的 Prompt 模板，便于定制和维护。
+
+##### 4.3.1 使用 Prompt 模板
+
+```python
+from config.prompts import PromptTemplates, PromptBuilder, get_system_prompt
+
+# 1. 获取系统提示词
+system_prompt = get_system_prompt(provider="kimi", has_files=True)
+system_prompt_default = get_system_prompt(provider="default")
+
+# 2. 构建 RAG 查询 Prompt
+rag_prompt = PromptBuilder.build_rag_prompt(
+    question="什么是 Transformer？",
+    context="文档内容...",
+    history="对话历史..."  # 可选
+)
+
+# 3. 构建直接对话 Prompt
+direct_prompt = PromptBuilder.build_direct_prompt(
+    question="解释一下机器学习",
+    history="对话历史...",  # 可选
+    context="补充上下文..."  # 可选
+)
+
+# 4. 构建带历史的上下文 Prompt
+context_prompt = PromptBuilder.build_context_prompt(
+    question="当前问题",
+    chat_history=[
+        {"role": "user", "content": "之前的问题"},
+        {"role": "assistant", "content": "之前的回答"}
+    ],
+    max_turns=10
+)
+
+# 5. 构建网络搜索增强 Prompt
+web_prompt = PromptBuilder.build_web_enhanced_prompt(
+    question="最新的 AI 技术",
+    web_results="搜索结果...",
+    context="文档内容..."  # 可选
+)
+```
+
+##### 4.3.2 可用的 Prompt 模板
+
+**系统提示词 (System Prompts)**:
+- `SYSTEM_DEFAULT`: 默认学术助手
+- `SYSTEM_KIMI`: Kimi 标准提示词
+- `SYSTEM_KIMI_WITH_FILES`: Kimi 带文件分析
+
+**RAG 相关**:
+- `RAG_QUERY_TEMPLATE`: 基础 RAG 查询
+- `RAG_WITH_HISTORY_TEMPLATE`: 带历史的 RAG 查询
+
+**直接对话**:
+- `DIRECT_CHAT_TEMPLATE`: 基础对话
+- `DIRECT_CHAT_WITH_HISTORY`: 带历史对话
+- `DIRECT_CHAT_WITH_CONTEXT`: 带上下文对话
+
+**网络搜索**:
+- `WEB_SEARCH_ENHANCED_TEMPLATE`: 网络搜索增强
+- `COMBINED_CONTEXT_TEMPLATE`: 组合多种上下文
+
+**文档分析**:
+- `DOCUMENT_SUMMARY`: 文档总结
+- `DOCUMENT_COMPARISON`: 文档对比
+- `DOCUMENT_QA`: 文档问答
+
+##### 4.3.3 自定义 Prompt 模板
+
+在 `config/prompts.py` 中添加自定义模板：
+
+```python
+class PromptTemplates:
+    # 添加你的自定义模板
+    CUSTOM_ANALYSIS = """请分析以下内容：
+
+内容：{content}
+
+分析要求：
+1. {requirement1}
+2. {requirement2}
+"""
+
+# 在 PromptBuilder 中添加构建方法
+class PromptBuilder:
+    @staticmethod
+    def build_custom_analysis(content: str, requirements: list) -> str:
+        return PromptTemplates.CUSTOM_ANALYSIS.format(
+            content=content,
+            requirement1=requirements[0],
+            requirement2=requirements[1]
+        )
+```
+
+##### 4.3.4 在 Agent 中使用
+
+```python
+from config.prompts import get_system_prompt, PromptBuilder
+
+# Agent 内部自动使用 Prompt 配置
+# 例如在 query_direct 方法中：
+messages = [
+    {
+        "role": "system",
+        "content": get_system_prompt(provider="kimi", has_files=True)
+    },
+    {
+        "role": "user",
+        "content": prompt
+    }
+]
 ```
 
 ---

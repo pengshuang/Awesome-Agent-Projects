@@ -20,6 +20,7 @@ from loguru import logger
 from openai import OpenAI
 
 from config import SystemConfig
+from config.prompts import PromptBuilder, get_system_prompt
 from src.loaders.document_loader import DocumentLoader
 from src.constants import (
     LOG_SEPARATOR_FULL,
@@ -682,7 +683,7 @@ class AcademicAgent:
                         *file_messages,  # 解构所有文件内容消息
                         {
                             "role": "system",
-                            "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手。你会为用户提供安全，有帮助，准确的回答。同时，你会拒绝一切涉及恐怖主义，种族歧视，黄色暴力等问题的回答。"
+                            "content": get_system_prompt(provider="kimi", has_files=True)
                         },
                         {
                             "role": "user",
@@ -710,7 +711,7 @@ class AcademicAgent:
                 messages = [
                     {
                         "role": "system",
-                        "content": "你是 Kimi，由 Moonshot AI 提供的人工智能助手。你会为用户提供安全，有帮助，准确的回答。"
+                        "content": get_system_prompt(provider="kimi", has_files=False)
                     },
                     {
                         "role": "user",
@@ -953,25 +954,12 @@ class AcademicAgent:
         Returns:
             包含历史对话的增强提示词
         """
-        # 获取最近的历史（按配置的最大轮数）
-        recent_history = self.chat_history[-(self.max_history_turns * 2):]
-        
-        # 构建对话历史字符串
-        history_text = ""
-        for msg in recent_history:
-            role_name = "用户" if msg["role"] == "user" else "助手"
-            history_text += f"\n{role_name}: {msg['content']}"
-        
-        # 构建最终提示词
-        prompt = f"""根据以下对话历史和当前问题，提供准确的回答。
-
-对话历史:{history_text}
-
-当前问题: {question}
-
-请基于上下文回答当前问题，如果问题与之前的对话相关，请结合历史信息回答。"""
-        
-        return prompt
+        # 使用 PromptBuilder 构建提示词
+        return PromptBuilder.build_context_prompt(
+            question=question,
+            chat_history=self.chat_history,
+            max_turns=self.max_history_turns
+        )
     
     def _update_chat_history(self, user_message: str, assistant_message: str):
         """
