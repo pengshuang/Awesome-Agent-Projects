@@ -6,17 +6,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-## 🎉 最新更新
-
-**2025-12-21**: 🚀 重大架构优化！
-- ✅ 创建共享基础库，消除 60% 重复代码
-- ✅ 统一 LLM 配置，支持多提供商
-- ✅ 标准化工具函数库
-- ✅ 完善文档和使用指南
-
-[查看优化说明 →](./OPTIMIZATION_GUIDE.md) | [安装指南 →](./INSTALL.md)
-
----
 
 ## 📚 目录
 
