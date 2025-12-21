@@ -10,11 +10,10 @@ from openai import OpenAI
 from loguru import logger
 
 from config import get_llm_client
+from config.prompts import PromptManager
 from src.constants import (
     SUCCESS_EVALUATION_COMPLETED,
     INFO_EVALUATING_RESUME,
-    DEFAULT_EVALUATION_PROMPT,
-    EVALUATION_DIMENSIONS,
 )
 
 
@@ -28,15 +27,10 @@ class ResumeEvaluator:
     3. 改进建议
     """
     
-    def __init__(self, custom_prompt: Optional[str] = None):
+    def __init__(self):
         """
         初始化简历评估器
-        
-        Args:
-            custom_prompt: 自定义评估提示词
         """
-        self.evaluation_prompt = custom_prompt or DEFAULT_EVALUATION_PROMPT
-        
         # 获取 LLM 客户端
         self.client, self.model, self.temperature = get_llm_client()
         
@@ -62,12 +56,15 @@ class ResumeEvaluator:
         logger.info(f"{INFO_EVALUATING_RESUME}")
         start_time = time.time()
         
-        # 构建评估提示词
-        prompt = self._build_evaluation_prompt(
+        # 使用 PromptManager 构建评估提示词
+        prompt = PromptManager.get_resume_evaluation_prompt(
             resume_content=resume_content,
-            position=position,
-            requirements=requirements,
+            position=position or "未指定",
+            requirements=requirements or "无特殊要求",
         )
+        
+        # 打印Prompt日志
+        logger.info(f"[LLM API] 简历评估 - Prompt:\n{'-'*60}\n{prompt}\n{'-'*60}")
         
         # 调用 LLM 进行评估
         try:
@@ -97,34 +94,6 @@ class ResumeEvaluator:
             }
         }
     
-    def _build_evaluation_prompt(
-        self,
-        resume_content: str,
-        position: Optional[str] = None,
-        requirements: Optional[str] = None,
-    ) -> str:
-        """
-        构建评估提示词
-        
-        Args:
-            resume_content: 简历内容
-            position: 目标岗位
-            requirements: 岗位要求
-            
-        Returns:
-            完整的评估提示词
-        """
-        prompt = self.evaluation_prompt.format(resume_content=resume_content)
-        
-        # 添加岗位信息
-        if position:
-            prompt += f"\n\n目标岗位：{position}"
-        
-        if requirements:
-            prompt += f"\n\n岗位要求：\n{requirements}"
-        
-        return prompt
-    
     def quick_score(self, resume_content: str) -> Dict[str, Any]:
         """
         快速打分（只返回分数，不详细分析）
@@ -138,18 +107,11 @@ class ResumeEvaluator:
         logger.info("执行快速评分...")
         start_time = time.time()
         
-        prompt = f"""
-请对以下简历进行快速评分（0-100分）。
-
-简历内容：
-{resume_content}
-
-请只返回一个0-100的数字分数，以及一句话简短评价（不超过50字）。
-
-格式：
-分数: XX
-评价: XXXXX
-"""
+        # 使用 PromptManager 获取快速评分 Prompt
+        prompt = PromptManager.get_quick_score_prompt(resume_content)
+        
+        # 打印Prompt日志
+        logger.info(f"[LLM API] 快速评分 - Prompt:\n{'-'*60}\n{prompt}\n{'-'*60}")
         
         try:
             response = self.client.chat.completions.create(
@@ -168,6 +130,7 @@ class ResumeEvaluator:
             "score_text": score_text,
             "metadata": {
                 "elapsed_time": elapsed_time,
+                "model": self.model,
             }
         }
     
@@ -184,21 +147,11 @@ class ResumeEvaluator:
         logger.info("生成改进建议...")
         start_time = time.time()
         
-        prompt = f"""
-请对以下简历提出具体的改进建议。
-
-简历内容：
-{resume_content}
-
-请从以下几个方面提出建议：
-1. 内容完整性（缺少哪些重要信息）
-2. 表达方式（如何更好地描述经验和技能）
-3. 格式排版（如何提升专业度）
-4. 重点突出（如何突出核心竞争力）
-5. 针对性优化（针对不同岗位如何调整）
-
-每条建议要具体、可操作。
-"""
+        # 使用 PromptManager 获取改进建议 Prompt
+        prompt = PromptManager.get_improvement_suggestions_prompt(resume_content)
+        
+        # 打印Prompt日志
+        logger.info(f"[LLM API] 改进建议 - Prompt:\n{'-'*60}\n{prompt}\n{'-'*60}")
         
         try:
             response = self.client.chat.completions.create(
@@ -217,5 +170,6 @@ class ResumeEvaluator:
             "suggestions": suggestions,
             "metadata": {
                 "elapsed_time": elapsed_time,
+                "model": self.model,
             }
         }

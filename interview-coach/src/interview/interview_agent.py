@@ -10,10 +10,10 @@ from openai import OpenAI
 from loguru import logger
 
 from config import get_llm_client, SystemConfig
+from config.prompts import PromptManager
 from src.constants import (
     SUCCESS_INTERVIEW_STARTED,
     INFO_STARTING_INTERVIEW,
-    DEFAULT_INTERVIEW_SYSTEM_PROMPT,
     INTERVIEW_TYPES,
     INFO_WEB_SEARCH_ENABLED,
 )
@@ -37,7 +37,6 @@ class InterviewAgent:
         interview_type: str = "technical",
         max_history_turns: int = 20,
         enable_web_search: bool = True,
-        custom_system_prompt: Optional[str] = None,
     ):
         """
         初始化面试 Agent
@@ -47,7 +46,6 @@ class InterviewAgent:
             interview_type: 面试类型（technical, behavioral, comprehensive）
             max_history_turns: 最大保留历史轮数
             enable_web_search: 是否启用联网搜索
-            custom_system_prompt: 自定义系统提示词
         """
         self.resume_content = resume_content
         self.interview_type = interview_type
@@ -74,23 +72,17 @@ class InterviewAgent:
                 self.enable_web_search = False
         
         # 系统提示词
-        self.system_prompt = self._build_system_prompt(custom_system_prompt)
+        self.system_prompt = self._build_system_prompt()
         
         logger.info(f"面试 Agent 已初始化 | 类型: {INTERVIEW_TYPES.get(interview_type, interview_type)}")
     
-    def _build_system_prompt(self, custom_prompt: Optional[str] = None) -> str:
+    def _build_system_prompt(self) -> str:
         """
         构建系统提示词
         
-        Args:
-            custom_prompt: 自定义提示词
-            
         Returns:
             系统提示词
         """
-        if custom_prompt:
-            return custom_prompt
-        
         # 生成简历摘要（用于提示词）
         resume_summary = ""
         if self.resume_content:
@@ -101,12 +93,9 @@ class InterviewAgent:
         else:
             resume_summary = "（未提供简历）"
         
-        # 获取面试类型名称
-        interview_type_name = INTERVIEW_TYPES.get(self.interview_type, "面试")
-        
-        # 使用默认模板
-        prompt = DEFAULT_INTERVIEW_SYSTEM_PROMPT.format(
-            interview_type=interview_type_name,
+        # 使用 PromptManager 获取面试 Prompt
+        prompt = PromptManager.get_interview_prompt(
+            interview_type=self.interview_type,
             resume_summary=resume_summary,
         )
         
@@ -124,6 +113,9 @@ class InterviewAgent:
         
         # 构建开场白提示
         prompt = f"{self.system_prompt}\n\n请作为面试官，给出一个友好的开场白，并提出第一个问题。"
+        
+        # 打印Prompt日志
+        logger.info(f"[LLM API] 开始面试 - Prompt:\n{'-'*60}\n{prompt}\n{'-'*60}")
         
         try:
             response = self.client.chat.completions.create(
@@ -202,6 +194,9 @@ class InterviewAgent:
             
             except Exception as e:
                 logger.warning(f"Web 搜索失败: {e}")
+        
+        # 打印Prompt日志（仅打印最后一条用户消息和系统提示）
+        logger.info(f"[LLM API] 面试对话 - Messages:\n{'-'*60}\nSystem: {messages[0]['content'][:200]}...\nLast User Message: {messages[-1]['content'][:500]}...\n{'-'*60}")
         
         # 调用 LLM
         try:

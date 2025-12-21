@@ -49,7 +49,7 @@ def initialize_components():
         return f"❌ 初始化失败: {str(e)}"
 
 
-def upload_resume(file) -> Tuple[str, str]:
+def upload_resume(file) -> str:
     """
     上传并解析简历
     
@@ -57,12 +57,12 @@ def upload_resume(file) -> Tuple[str, str]:
         file: Gradio 文件对象
         
     Returns:
-        (状态信息, 简历内容预览)
+        状态信息（Markdown 格式）
     """
     global current_resume_content, current_resume_metadata, resume_loader
     
     if not file:
-        return "⚠️ 请上传简历文件", ""
+        return "⚠️ 请上传简历文件"
     
     try:
         logger.info(f"开始加载简历: {file.name}")
@@ -72,26 +72,23 @@ def upload_resume(file) -> Tuple[str, str]:
         current_resume_content = result["content"]
         current_resume_metadata = result["metadata"]
         
-        # 生成状态信息
-        status = f"""✅ 简历加载成功！
+        # 生成状态信息（Markdown 格式）
+        status = f"""## ✅ 简历加载成功！
 
-📄 文件名: {current_resume_metadata['file_name']}
-📏 文件大小: {current_resume_metadata['file_size'] / 1024:.2f} KB
-📝 内容长度: {current_resume_metadata['content_length']} 字符
-⏱️  加载耗时: {current_resume_metadata['load_time']:.2f}秒
+| 项目 | 信息 |
+|------|------|
+| 📄 文件名 | {current_resume_metadata['file_name']} |
+| 📏 文件大小 | {current_resume_metadata['file_size'] / 1024:.2f} KB |
+| 📝 内容长度 | {current_resume_metadata['content_length']} 字符 |
+| ⏱️ 加载耗时 | {current_resume_metadata['load_time']:.2f}秒 |
 """
         
-        # 简历内容预览（前500字符）
-        preview = current_resume_content[:500]
-        if len(current_resume_content) > 500:
-            preview += "\n\n... (后续内容已省略)"
-        
         logger.info("简历加载成功")
-        return status, preview
+        return status
     
     except Exception as e:
         logger.error(f"简历加载失败: {e}")
-        return f"❌ 加载失败: {str(e)}", ""
+        return f"## ❌ 加载失败\n\n```\n{str(e)}\n```"
 
 
 def evaluate_resume(position: str, requirements: str) -> str:
@@ -120,13 +117,14 @@ def evaluate_resume(position: str, requirements: str) -> str:
             requirements=requirements if requirements else None,
         )
         
-        # 格式化输出
-        output = f"""# 简历评估报告
+        # 格式化输出（Markdown 格式）
+        output = f"""# 📊 简历评估报告
 
 {result['evaluation']}
 
 ---
-⏱️ 评估耗时: {result['metadata']['elapsed_time']:.2f}秒
+
+⏱️ **评估耗时**: {result['metadata']['elapsed_time']:.2f}秒 | 🤖 **模型**: {result['metadata']['model']}
 """
         
         logger.info("简历评估完成")
@@ -134,7 +132,7 @@ def evaluate_resume(position: str, requirements: str) -> str:
     
     except Exception as e:
         logger.error(f"简历评估失败: {e}")
-        return f"❌ 评估失败: {str(e)}"
+        return f"## ❌ 评估失败\n\n```\n{str(e)}\n```"
 
 
 def quick_score_resume() -> str:
@@ -148,19 +146,20 @@ def quick_score_resume() -> str:
         logger.info("开始快速评分...")
         result = resume_evaluator.quick_score(current_resume_content)
         
-        output = f"""# 快速评分
+        output = f"""# ⚡ 快速评分
 
 {result['score_text']}
 
 ---
-⏱️ 耗时: {result['metadata']['elapsed_time']:.2f}秒
+
+⏱️ **耗时**: {result['metadata']['elapsed_time']:.2f}秒 | 🤖 **模型**: {result['metadata']['model']}
 """
         
         return output
     
     except Exception as e:
         logger.error(f"快速评分失败: {e}")
-        return f"❌ 评分失败: {str(e)}"
+        return f"## ❌ 评分失败\n\n```\n{str(e)}\n```"
 
 
 def get_improvement_suggestions() -> str:
@@ -174,22 +173,107 @@ def get_improvement_suggestions() -> str:
         logger.info("生成改进建议...")
         result = resume_evaluator.suggest_improvements(current_resume_content)
         
-        output = f"""# 简历改进建议
+        output = f"""# 💡 简历改进建议
 
 {result['suggestions']}
 
 ---
-⏱️ 耗时: {result['metadata']['elapsed_time']:.2f}秒
+
+⏱️ **耗时**: {result['metadata']['elapsed_time']:.2f}秒 | 🤖 **模型**: {result['metadata']['model']}
 """
         
         return output
     
     except Exception as e:
         logger.error(f"生成建议失败: {e}")
-        return f"❌ 生成失败: {str(e)}"
+        return f"## ❌ 生成失败\n\n```\n{str(e)}\n```"
 
 
-def start_interview(interview_type: str, enable_web: bool) -> Tuple[str, List]:
+def analyze_job_position(job_input: str, question_count: int) -> str:
+    """岗位解读与面试问题生成
+    
+    Args:
+        job_input: 岗位JD链接或手动输入的岗位要求
+        question_count: 生成的问题数量
+        
+    Returns:
+        分析结果和面试问题列表
+    """
+    global current_resume_content
+    
+    if not current_resume_content:
+        return "❌ 请先上传简历"
+    
+    if not job_input or not job_input.strip():
+        return "❌ 请输入岗位链接或岗位要求"
+    
+    try:
+        logger.info(f"开始岗位解读，生成 {question_count} 个面试问题...")
+        
+        start_time = time.time()
+        
+        # 判断是链接还是文本
+        job_requirements = job_input.strip()
+        if job_input.startswith(('http://', 'https://')):
+            # TODO: 未来可以添加网页爬取功能
+            # 目前先提示用户手动复制JD内容
+            return """# ⚠️ 链接解析功能开发中
+
+目前暂不支持直接解析招聘链接，请手动复制岗位JD内容并粘贴到输入框中。
+
+## 操作步骤
+
+1. 打开招聘链接
+2. 复制岗位描述（JD）的完整内容
+3. 粘贴到下方的"岗位要求"输入框
+4. 点击"生成面试问题"按钮
+"""
+        
+        # 获取 LLM 客户端
+        from config import get_llm_client
+        from config.prompts import PromptTemplates
+        
+        client, model, temperature = get_llm_client()
+        
+        # 构建提示词
+        prompt = PromptTemplates.JOB_ANALYSIS.format(
+            job_requirements=job_requirements,
+            resume_content=current_resume_content,
+            question_count=question_count,
+        )
+        
+        # 打印Prompt日志
+        logger.info(f"[LLM API] 岗位解读 - Prompt:\n{'-'*60}\n{prompt}\n{'-'*60}")
+        
+        # 调用 LLM
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=temperature,
+        )
+        
+        result = response.choices[0].message.content
+        elapsed_time = time.time() - start_time
+        
+        # 格式化输出
+        output = f"""{result}
+
+---
+
+⏱️ **分析耗时**: {elapsed_time:.2f}秒 | 🤖 **模型**: {model}
+"""
+        
+        logger.info(f"岗位解读完成，生成了 {question_count} 个问题")
+        return output
+    
+    except Exception as e:
+        logger.error(f"岗位解读失败: {e}")
+        return f"## ❌ 分析失败\n\n```\n{str(e)}\n```"
+
+
+def start_interview(interview_type: str, enable_web: bool) -> List:
     """
     开始面试
     
@@ -198,12 +282,12 @@ def start_interview(interview_type: str, enable_web: bool) -> Tuple[str, List]:
         enable_web: 是否启用联网搜索
         
     Returns:
-        (开场白, 初始化的聊天历史)
+        初始化的聊天历史
     """
     global current_resume_content, interview_agent
     
     if not current_resume_content:
-        return "❌ 请先上传简历", []
+        return [{"role": "assistant", "content": "❌ 请先上传简历"}]
     
     try:
         logger.info(f"开始面试 | 类型: {interview_type}")
@@ -220,15 +304,17 @@ def start_interview(interview_type: str, enable_web: bool) -> Tuple[str, List]:
         result = interview_agent.start_interview()
         opening = result["opening"]
         
-        # 初始化聊天历史
-        chat_history = [[None, opening]]
+        # 初始化聊天历史 - 使用字典格式
+        chat_history = [
+            {"role": "assistant", "content": opening}
+        ]
         
         logger.info("面试已开始")
-        return opening, chat_history
+        return chat_history
     
     except Exception as e:
         logger.error(f"开始面试失败: {e}")
-        return f"❌ 开始失败: {str(e)}", []
+        return [{"role": "assistant", "content": f"❌ 开始失败: {str(e)}"}]
 
 
 def chat_with_interviewer(
@@ -250,7 +336,10 @@ def chat_with_interviewer(
     global interview_agent
     
     if not interview_agent:
-        return "", history + [[message, "❌ 请先点击'开始面试'按钮"]]
+        history_copy = history.copy() if history else []
+        history_copy.append({"role": "user", "content": message})
+        history_copy.append({"role": "assistant", "content": "❌ 请先点击'开始面试'按钮"})
+        return "", history_copy
     
     if not message or not message.strip():
         return "", history
@@ -271,15 +360,19 @@ def chat_with_interviewer(
         
         full_response = response + metadata_info
         
-        # 更新历史
-        history.append([message, full_response])
+        # 更新历史 - 使用字典格式
+        updated_history = history.copy() if history else []
+        updated_history.append({"role": "user", "content": message})
+        updated_history.append({"role": "assistant", "content": full_response})
         
-        return "", history
+        return "", updated_history
     
     except Exception as e:
         logger.error(f"对话失败: {e}")
-        history.append([message, f"❌ 回复失败: {str(e)}"])
-        return "", history
+        updated_history = history.copy() if history else []
+        updated_history.append({"role": "user", "content": message})
+        updated_history.append({"role": "assistant", "content": f"❌ 回复失败: {str(e)}"})
+        return "", updated_history
 
 
 def clear_interview() -> Tuple[str, List]:
@@ -303,13 +396,15 @@ def get_interview_summary() -> str:
     try:
         summary = interview_agent.get_interview_summary()
         
-        output = f"""# 面试总结
+        output = f"""# 📊 面试总结
 
-📋 **面试类型**: {summary['interview_type']}
-🔢 **对话轮数**: {summary['total_turns']} 轮
-📝 **消息数量**: {summary['history_length']} 条
-📄 **简历状态**: {'已加载' if summary['has_resume'] else '未加载'}
-🌐 **联网搜索**: {'已启用' if summary['web_search_enabled'] else '未启用'}
+| 项目 | 信息 |
+|------|------|
+| 📋 面试类型 | {summary['interview_type']} |
+| 🔢 对话轮数 | {summary['total_turns']} 轮 |
+| 📝 消息数量 | {summary['history_length']} 条 |
+| 📄 简历状态 | {'✅ 已加载' if summary['has_resume'] else '❌ 未加载'} |
+| 🌐 联网搜索 | {'✅ 已启用' if summary['web_search_enabled'] else '❌ 未启用'} |
 """
         
         return output
@@ -326,10 +421,7 @@ def get_interview_summary() -> str:
 def create_ui():
     """创建 Gradio UI"""
     
-    with gr.Blocks(
-        title="AI 模拟面试系统",
-        theme=gr.themes.Soft(),
-    ) as app:
+    with gr.Blocks() as app:
         
         gr.Markdown("""
         # 🎯 AI 模拟面试系统
@@ -342,6 +434,11 @@ def create_ui():
         - 💬 多轮对话模拟面试
         - 🌐 支持联网搜索（验证回答、获取最新信息）
         - 🤖 支持多种 LLM API（DeepSeek、OpenAI、Qwen 等）
+        
+        **使用提示**：
+        1. 先在「简历管理」上传你的简历
+        2. 在「简历评估」获取专业评估和改进建议
+        3. 在「模拟面试」开始面试练习
         """)
         
         # ====================================================================
@@ -359,23 +456,15 @@ def create_ui():
                     upload_btn = gr.Button("📤 加载简历", variant="primary")
                 
                 with gr.Column(scale=2):
-                    resume_status = gr.Textbox(
-                        label="状态",
-                        lines=6,
-                        interactive=False,
+                    resume_status = gr.Markdown(
+                        value="等待上传简历..."
                     )
-            
-            resume_preview = gr.Textbox(
-                label="简历内容预览",
-                lines=10,
-                interactive=False,
-            )
             
             # 绑定事件
             upload_btn.click(
                 fn=upload_resume,
                 inputs=[resume_file],
-                outputs=[resume_status, resume_preview],
+                outputs=[resume_status],
             )
         
         # ====================================================================
@@ -402,7 +491,7 @@ def create_ui():
                         suggestions_btn = gr.Button("💡 改进建议")
             
             evaluation_output = gr.Markdown(
-                label="评估结果",
+                value="等待评估..."
             )
             
             # 绑定事件
@@ -425,7 +514,52 @@ def create_ui():
             )
         
         # ====================================================================
-        # Tab 3: 模拟面试
+        # Tab 3: 岗位解读
+        # ====================================================================
+        with gr.Tab("🎯 岗位解读"):
+            gr.Markdown("## 岗位分析与面试问题生成")
+            gr.Markdown("""
+根据岗位JD和您的简历，智能生成针对性的面试问题。
+
+### 使用步骤
+1. 粘贴招聘岗位的完整JD内容
+2. 选择生成的问题数量（建议10-15个）
+3. 点击"生成面试问题"按钮
+4. 查看分析结果和面试问题列表
+""")
+            
+            with gr.Row():
+                with gr.Column():
+                    job_input = gr.Textbox(
+                        label="岗位JD",
+                        placeholder="请粘贴岗位描述（Job Description）的完整内容...\n\n包括：岗位职责、任职要求、技能要求等",
+                        lines=10,
+                    )
+                    
+                    question_count_slider = gr.Slider(
+                        label="生成问题数量",
+                        minimum=5,
+                        maximum=20,
+                        value=10,
+                        step=1,
+                        info="根据岗位要求生成针对性面试问题",
+                    )
+                    
+                    analyze_btn = gr.Button("🔍 生成面试问题", variant="primary", size="lg")
+            
+            job_analysis_output = gr.Markdown(
+                value="#### 💡 提示\n\n请先上传简历，然后输入岗位JD并生成面试问题。\n\n生成的问题将基于：\n- 岗位的核心要求\n- 您的简历背景\n- 技能匹配度分析"
+            )
+            
+            # 绑定事件
+            analyze_btn.click(
+                fn=analyze_job_position,
+                inputs=[job_input, question_count_slider],
+                outputs=[job_analysis_output],
+            )
+        
+        # ====================================================================
+        # Tab 4: 模拟面试
         # ====================================================================
         with gr.Tab("💼 模拟面试"):
             gr.Markdown("## 多轮对话模拟面试")
@@ -451,6 +585,12 @@ def create_ui():
                     start_interview_btn = gr.Button("🎬 开始面试", variant="primary")
                     clear_interview_btn = gr.Button("🗑️ 清空历史")
                     summary_btn = gr.Button("📊 面试总结")
+                    
+                    # 面试总结输出区域
+                    summary_output = gr.Markdown(
+                        label="面试总结",
+                        value=""
+                    )
                 
                 with gr.Column(scale=3):
                     chatbot = gr.Chatbot(
@@ -466,13 +606,11 @@ def create_ui():
                         )
                         submit_btn = gr.Button("发送", scale=1, variant="primary")
             
-            summary_output = gr.Markdown(label="面试总结")
-            
             # 绑定事件
             start_interview_btn.click(
                 fn=start_interview,
                 inputs=[interview_type, enable_web_search],
-                outputs=[summary_output, chatbot],
+                outputs=[chatbot],
             )
             
             submit_btn.click(
@@ -498,42 +636,6 @@ def create_ui():
                 inputs=[],
                 outputs=[summary_output],
             )
-        
-        # ====================================================================
-        # Tab 4: 系统设置
-        # ====================================================================
-        with gr.Tab("⚙️ 系统设置"):
-            gr.Markdown("## 系统信息")
-            
-            system_info = gr.Markdown(f"""
-            **LLM 模型**: {SystemConfig.LLM_MODEL}
-            
-            **API 地址**: {SystemConfig.LLM_API_BASE}
-            
-            **联网搜索**: {'已启用' if SystemConfig.ENABLE_WEB_SEARCH else '未启用'}
-            
-            **搜索引擎**: {SystemConfig.WEB_SEARCH_ENGINE}
-            
-            **最大历史轮数**: {SystemConfig.MAX_HISTORY_TURNS}
-            
-            **日志级别**: {SystemConfig.LOG_LEVEL}
-            """)
-        
-        # ====================================================================
-        # 页脚
-        # ====================================================================
-        gr.Markdown("""
-        ---
-        💡 **使用提示**：
-        1. 先在「简历管理」上传你的简历
-        2. 在「简历评估」获取专业评估和改进建议
-        3. 在「模拟面试」开始面试练习
-        
-        ⚠️ **注意事项**：
-        - 请确保在 `.env` 文件中配置了 LLM API Key
-        - 联网搜索功能需要稳定的网络连接
-        - 面试过程中可以随时清空历史重新开始
-        """)
     
     return app
 
@@ -553,8 +655,8 @@ def main():
     
     # 启动服务器
     app.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
+        server_name="127.0.0.1",
+        server_port=7861,
         share=False,
         show_error=True,
     )
