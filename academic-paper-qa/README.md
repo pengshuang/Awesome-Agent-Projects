@@ -6,6 +6,8 @@
 [![LlamaIndex](https://img.shields.io/badge/Powered%20by-LlamaIndex-orange)](https://www.llamaindex.ai/)
 [![Pydantic](https://img.shields.io/badge/Config-Pydantic-blue)](https://docs.pydantic.dev/)
 
+中文 | [English](README_EN.md)
+
 ---
 
 ## 📖 文档导航

@@ -6,6 +6,8 @@
 [![Pydantic v2](https://img.shields.io/badge/pydantic-v2-blue.svg)](https://docs.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+中文 | [English](README_EN.md)
+
 ## ✨ 核心功能
 
 ### 📄 简历管理

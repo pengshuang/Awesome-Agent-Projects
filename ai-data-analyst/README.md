@@ -10,6 +10,8 @@
 [![Pydantic](https://img.shields.io/badge/Pydantic-2.0+-green.svg)](https://docs.pydantic.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+中文 | [English](README_EN.md)
+
 </div>
 
 ---

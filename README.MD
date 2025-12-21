@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
+中文 | [English](README_EN.md)
+
 
 ## 📚 目录
 
@@ -64,7 +66,7 @@ python web_ui_multi_turn.py
 
 **技术栈**: LlamaIndex · Chroma · Gradio · BGE Embedding
 
-[📂 查看项目](./academic-paper-qa) | [📖 文档](./academic-paper-qa/README.md)
+[📂 查看项目](./academic-paper-qa) | [📖 中文文档](./academic-paper-qa/README.md) | [📖 English Doc](./academic-paper-qa/README_EN.md)
 
 ---
 
@@ -76,7 +78,7 @@ python web_ui_multi_turn.py
 
 **技术栈**: LlamaIndex · Pandas · Plotly · Gradio
 
-[📂 查看项目](./ai-data-analyst) | [📖 文档](./ai-data-analyst/README.md)
+[📂 查看项目](./ai-data-analyst) | [📖 中文文档](./ai-data-analyst/README.md) | [📖 English Doc](./ai-data-analyst/README_EN.md)
 
 ---
 
@@ -88,7 +90,7 @@ python web_ui_multi_turn.py
 
 **技术栈**: OpenAI API · Gradio · DuckDuckGo
 
-[📂 查看项目](./interview-coach) | [📖 文档](./interview-coach/README.md)
+[📂 查看项目](./interview-coach) | [📖 中文文档](./interview-coach/README.md) | [📖 English Doc](./interview-coach/README_EN.md)
 
 ---
 
