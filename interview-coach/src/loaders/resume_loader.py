@@ -61,7 +61,7 @@ class ResumeLoader:
         
         logger.info("简历加载器已初始化")
     
-    def load_resume(self, file_path: str) -> Dict[str, Any]:
+    def load_resume(self, file_path: str) -> ResumeData:
         """
         加载简历文件
         
@@ -69,54 +69,62 @@ class ResumeLoader:
             file_path: 简历文件路径
             
         Returns:
-            包含简历内容和元数据的字典
+            ResumeData: 包含简历内容和元数据的数据对象
             
         Raises:
             FileNotFoundError: 文件不存在
-            ValueError: 文件格式不支持
+            UnsupportedFileFormatError: 文件格式不支持
+            EmptyResumeError: 简历内容为空
+            ResumeLoadError: 其他加载错误
         """
         logger.info(f"{INFO_LOADING_RESUME} {file_path}")
         start_time = time.time()
         
         # 检查文件是否存在
-        file_path = Path(file_path)
-        if not file_path.exists():
+        path_obj = Path(file_path)
+        if not path_obj.exists():
             logger.error(f"{ERROR_FILE_NOT_FOUND}: {file_path}")
-            raise FileNotFoundError(f"{ERROR_FILE_NOT_FOUND}: {file_path}")
+            raise FileNotFoundError(str(path_obj))
         
         # 检查文件格式
-        if file_path.suffix.lower() not in self.SUPPORTED_FORMATS:
-            logger.error(f"{ERROR_INVALID_FILE}: {file_path.suffix}")
-            raise ValueError(
-                f"{ERROR_INVALID_FILE}: {file_path.suffix}\n"
-                f"支持的格式: {', '.join(self.SUPPORTED_FORMATS)}"
+        if path_obj.suffix.lower() not in self.SUPPORTED_FORMATS:
+            logger.error(f"{ERROR_INVALID_FILE}: {path_obj.suffix}")
+            raise UnsupportedFileFormatError(
+                path_obj.suffix.lower(),
+                self.SUPPORTED_FORMATS
             )
         
         # 加载文件
-        self.resume_path = file_path
-        self.resume_content = self._load_pdf(file_path)
+        try:
+            self.resume_path = path_obj
+            self.resume_content = self._load_pdf(path_obj)
+        except Exception as e:
+            logger.error(f"PDF解析失败: {e}")
+            raise ResumeLoadError(f"PDF解析失败: {str(e)}")
         
         # 检查内容
         if not self.resume_content or not self.resume_content.strip():
             logger.warning(f"{WARNING_NO_CONTENT}: {file_path}")
-            raise ValueError(f"{WARNING_NO_CONTENT}")
+            raise EmptyResumeError()
         
         # 构建元数据
         elapsed_time = time.time() - start_time
-        self.metadata = {
-            "file_name": file_path.name,
-            "file_path": str(file_path),
-            "file_size": file_path.stat().st_size,
-            "content_length": len(self.resume_content),
-            "load_time": elapsed_time,
-        }
+        metadata = ResumeMetadata(
+            file_name=path_obj.name,
+            file_path=str(path_obj),
+            file_size=path_obj.stat().st_size,
+            content_length=len(self.resume_content),
+            load_time=elapsed_time,
+        )
+        
+        self.metadata = metadata
         
         logger.info(f"{SUCCESS_RESUME_LOADED} | 耗时: {elapsed_time:.2f}秒 | 长度: {len(self.resume_content)}")
         
-        return {
-            "content": self.resume_content,
-            "metadata": self.metadata,
-        }
+        return ResumeData(
+            content=self.resume_content,
+            metadata=metadata,
+        )
     
     def _load_pdf(self, file_path: Path) -> str:
         """

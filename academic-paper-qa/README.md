@@ -1,103 +1,75 @@
 # 📚 学术论文智能问答系统
 
-> 基于大语言模型的智能论文阅读助手，支持多轮对话，让您像和专家聊天一样轻松理解学术论文
+> 基于 RAG 技术的智能论文阅读助手，支持多轮对话、Web UI、联网搜索，让您轻松理解学术论文
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![LlamaIndex](https://img.shields.io/badge/Powered%20by-LlamaIndex-orange)](https://www.llamaindex.ai/)
+[![Pydantic](https://img.shields.io/badge/Config-Pydantic-blue)](https://docs.pydantic.dev/)
 
 ---
 
 ## 📖 文档导航
 
-| 文档 | 说明 | 适合人群 |
-|------|------|----------|
-| [README.md](README.md) | 项目主页、快速开始 | 所有用户 ⭐ |
-| [docs/FEATURES.md](docs/FEATURES.md) | 功能详细说明 | 想了解功能的用户 |
-| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | 详细使用指南 | 普通用户 |
-| [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | 开发者指南、API 文档 | 开发者和贡献者 |
+| 文档 | 说明 |
+|------|------|
+| [README.md](README.md) | **项目介绍 & 快速开始** |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | **使用指南**（配置、界面使用、常见问题） |
+| [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | **开发指南**（架构、API、Pydantic 配置） |
 
 ---
 
 ## 🌟 核心特性
 
-| 特性 | 说明 |
-|------|------|
-| 💬 **多轮对话** | 支持上下文记忆和连续追问，自然流畅的对话体验 |
-| 🧠 **智能问答** | 基于 RAG 技术的精准问答，理解复杂学术内容 |
-| 🌐 **Web UI** | 美观易用的图形化界面，支持 Markdown 渲染展示 ⭐ |
-| 📄 **多格式支持** | PDF、DOCX、Markdown、TXT 文档自动加载 |
-| 🔍 **语义检索** | 基于向量数据库的快速语义检索，毫秒级响应 |
-| 📊 **来源追溯** | 每个答案标注原文出处，可验证可追溯 |
-| 🌐 **联网搜索** | 集成 DuckDuckGo，获取最新研究进展 |
-| 🎨 **双模式** | RAG 模式（基于文档）+ LLM 模式（开放对话） |
-| 💻 **多界面** | Web UI + 命令行，单轮/多轮灵活切换 |
-| ⚙️ **Prompt 管理** | 统一的 Prompt 配置系统，易于定制和扩展 ⭐ |
+- 💬 **多轮对话** - 上下文记忆，连续追问
+- 🧠 **RAG 问答** - 基于向量检索的精准回答
+- 🌐 **Web UI** - 美观易用，支持 Markdown 渲染
+- 📄 **多格式** - PDF、DOCX、Markdown、TXT
+- 🔍 **语义检索** - 向量数据库，毫秒级响应
+- 📊 **来源追溯** - 答案标注原文出处
+- 🌐 **联网搜索** - DuckDuckGo 获取最新信息
+- 🎨 **双模式** - RAG（文档）+ LLM（开放对话）
+- ⚙️ **Pydantic 配置** - 类型安全，自动验证
 
 ---
 
-## 🚀 快速开始（3 步上手）
+## 🚀 快速开始
 
-### 1. 安装依赖
+### 1. 安装
 
 ```bash
-git clone https://github.com/yourusername/academic-paper-qa.git
+git clone <repository-url>
 cd academic-paper-qa
 pip install -r requirements.txt
 ```
 
-### 2. 配置 API
+### 2. 配置
 
 ```bash
-# 复制配置模板
 cp .env.example .env
-
-# 编辑 .env 文件，填入你的 API Key
-vim .env
+vim .env  # 编辑配置
 ```
 
 **必填配置：**
 ```bash
-LLM_API_BASE=https://api.moonshot.cn/v1  # API 端点（必须带 /v1）
-LLM_API_KEY=your-api-key-here             # 从服务商获取
-LLM_MODEL=moonshot-v1-8k                  # 模型名称
+LLM_API_KEY=your-api-key          # API Key
+LLM_API_BASE=https://api.xx.com/v1  # API 端点
+LLM_MODEL=gpt-3.5-turbo           # 模型名称
 ```
 
-**支持的 LLM：**
-- [Moonshot](https://platform.moonshot.cn/) - 推荐，中文优化
-- [OpenAI](https://platform.openai.com/) - GPT-3.5/GPT-4
-- [DeepSeek](https://platform.deepseek.com/) - 高性价比
+支持：[OpenAI](https://platform.openai.com/)、[DeepSeek](https://platform.deepseek.com/)、[Moonshot](https://platform.moonshot.cn/)
 
-### 3. 启动使用
+### 3. 启动
 
-#### 🎯 方式一：Web UI（推荐新手）
-
+**Web UI（推荐）：**
 ```bash
-# 多轮对话模式（推荐，支持连续追问）
-./start_web_multi.sh
-# 或
-python web_ui_multi_turn.py
-
-# 单轮问答模式（快速查询）
-./start_web_single.sh
-# 或
-python web_ui_single_turn.py
-
+./start_web_multi.sh   # 多轮对话
 # 访问 http://127.0.0.1:7860
 ```
 
-#### 💻 方式二：命令行
-
+**命令行：**
 ```bash
-# 多轮对话模式（交互式，适合深入讨论）
-./start_cli_multi.sh
-# 或
-python cli_multi_turn.py
-
-# 单轮问答模式（快速查询，支持脚本调用）
-./start_cli_single.sh
-# 或
-python cli_single_turn.py
+./start_cli_multi.sh   # 多轮对话
+./start_cli_single.sh  # 单轮问答
 ```
 
 **💡 选择建议：**
@@ -125,54 +97,15 @@ python cli_single_turn.py
 🤖: Transformer 主要应用于 NLP、CV 等领域...
 
 👤: 能详细说说 NLP 中的应用吗？  # ← 结合上下文继续深入
-🤖: 在自然语言处理中，Transformer 用于...
-```
-
-### ⚡ 什么时候用单轮问答？
-
-**适合场景：**
-- 🔬 **快速查询**：独立问题，无需上下文
-- 📊 **批量处理**：脚本自动化，批量查询
-- 💻 **事实查找**：明确的信息检索
-- 📈 **数据提取**：结构化信息提取
-
-**查询示例：**
-```bash
-# 快速查询单个问题
-python cli_single_turn.py query "这篇论文的主要贡献是什么？"
-
-# 脚本批量处理
-for paper in papers; do
-    python cli_single_turn.py query "总结 $paper"
-done
-```
-
-### 📊 历史轮数控制
-
-多轮对话支持灵活控制保留的历史对话轮数（1-50+轮可调），避免 Token 消耗过大。
-
-**推荐配置：**
-- 快速问答：1-5轮（节省Token）
-- 一般对话：5-10轮（默认）
-- 深度讨论：20-30轮（保留上下文）
-- 长期对话：50+轮（完整记忆）
-
-**配置方式：**
-- Web UI 界面调节
-- 代码初始化时设置
-- 环境变量 `MAX_HISTORY_TURNS`
-
-详细说明见：[用户指南 - 历史轮数控制](docs/USER_GUIDE.md#历史轮数控制)
-
 ---
 
-## 📖 使用示例
+## 💡 使用示例
 
-### 快速上手
+### 添加文档并提问
 
 ```bash
-# 1. 添加论文到文档目录
-cp ~/Downloads/paper.pdf ./data/documents/
+# 1. 添加论文
+cp paper.pdf ./data/documents/
 
 # 2. 启动 Web UI
 ./start_web_multi.sh
@@ -180,85 +113,68 @@ cp ~/Downloads/paper.pdf ./data/documents/
 # 3. 构建索引 → 开始提问
 ```
 
-**对话示例：**
+### 对话示例
+
 ```
 👤: 这篇论文的主要贡献是什么？
 🤖: 主要贡献是提出了 Transformer 架构...
 
 👤: 它解决了什么问题？
-🤖: Transformer 主要解决了 RNN 的序列依赖问题...
+🤖: Transformer 解决了 RNN 的序列依赖问题...
 ```
 
-更多应用场景请参考：[功能介绍](docs/FEATURES.md#应用场景) 和 [使用指南](docs/USER_GUIDE.md#常见场景)
-
----
-
-## 📚 文档导航
-
-| 文档 | 内容 | 适合人群 |
-|------|------|----------|
-| [功能介绍](docs/FEATURES.md) | 详细功能说明、技术架构、应用场景 | 所有用户 |
-| [使用指南](docs/USER_GUIDE.md) | 安装配置、操作步骤、问题排查 | 新手用户 |
-| [开发者文档](docs/DEVELOPER_GUIDE.md) | 代码架构、API 参考、扩展开发 | 开发者 |
-| [项目结构](PROJECT_STRUCTURE.md) | 目录结构、文件说明、快速导航 | 开发者 |
+详细使用说明：[使用指南](docs/USER_GUIDE.md)
 
 ---
 
 ## 🛠️ 技术栈
 
-| 组件 | 技术 | 版本 |
-|------|------|------|
-| **RAG 框架** | LlamaIndex | Latest |
-| **向量数据库** | Chroma | Latest |
-| **Embedding** | BAAI/bge-small-zh-v1.5 | - |
-| **LLM** | OpenAI / Moonshot / DeepSeek | - |
-| **Web UI** | Gradio | 4.0+ |
-| **搜索引擎** | DuckDuckGo | - |
-| **文档解析** | LlamaIndex SimpleDirectoryReader | - |
+- **RAG 框架**: LlamaIndex
+- **向量数据库**: Chroma
+- **Embedding**: BAAI/bge-small-zh-v1.5
+- **LLM**: OpenAI / DeepSeek / Moonshot
+- **Web UI**: Gradio 4.0+
+- **配置管理**: Pydantic 2.0+
+
+---
+
+## 📁 项目结构
+
+```
+academic-paper-qa/
+├── config/              # 配置模块（Pydantic）
+├── src/                 # 核心代码
+│   ├── agent.py        # Agent 核心
+│   ├── models.py       # 数据模型
+│   ├── indexing/       # 索引构建
+│   ├── query/          # 查询引擎
+│   ├── loaders/        # 文档加载
+│   └── tools/          # Web 搜索等工具
+├── data/               # 数据目录
+│   ├── documents/      # 放置论文（PDF/DOCX/TXT）
+│   └── vector_store/   # 向量索引
+├── examples/           # 示例代码
+├── docs/               # 文档
+└── *.py               # 启动脚本
+```
 
 ---
 
 ## ❓ 常见问题
 
-<details>
-<summary><b>Q: 支持英文论文吗？</b></summary>
+**Q: 支持哪些文件格式？**  
+A: PDF、DOCX、Markdown、TXT
 
-A: 支持。系统主要针对中文优化，英文论文建议使用 OpenAI 的模型以获得更好效果。
-</details>
+**Q: 需要 GPU 吗？**  
+A: 不需要，CPU 即可运行
 
-<details>
-<summary><b>Q: 一次可以加载多少篇论文？</b></summary>
+**Q: 支持本地模型吗？**  
+A: Embedding 支持本地模型，LLM 需要 API
 
-A: 理论上无限制，实际受限于内存和模型上下文长度。测试过 100+ 篇论文，检索性能依然良好。
-</details>
+**Q: 如何调整历史轮数？**  
+A: 参见 [使用指南 - 历史轮数控制](docs/USER_GUIDE.md#历史轮数控制)
 
-<details>
-<summary><b>Q: 多轮对话和单轮问答有什么区别？</b></summary>
-
-A: 
-- **多轮对话**：支持上下文记忆，可以连续追问，适合深入讨论
-- **单轮问答**：每次查询独立，响应更快，适合快速查询和批量处理
-</details>
-
-<details>
-<summary><b>Q: 如何提高答案质量？</b></summary>
-
-A: 
-1. 提供清晰具体的问题
-2. 使用 RAG 模式获取基于文档的准确答案
-3. 调整 Top-K 参数增加检索范围（建议 3-10）
-4. 必要时开启联网搜索获取最新信息
-</details>
-
-<details>
-<summary><b>Q: 构建索引失败怎么办？</b></summary>
-
-A: 
-1. 检查文档格式是否正确（支持 PDF、DOCX、MD、TXT）
-2. 检查文档是否损坏
-3. 查看日志文件：`logs/app.log`
-4. 尝试使用命令行构建：`python cli_single_turn.py`
-</details>
+更多问题：[使用指南 - 问题排查](docs/USER_GUIDE.md#问题排查)
 
 ---
 
@@ -266,68 +182,15 @@ A:
 
 欢迎提交 Issue 和 Pull Request！
 
-### 开发流程
-1. Fork 本项目
-2. 创建功能分支：`git checkout -b feature/amazing-feature`
-3. 提交更改：`git commit -m 'Add amazing feature'`
-4. 推送分支：`git push origin feature/amazing-feature`
-5. 提交 Pull Request
-
-### 代码规范
-- ✅ 遵循 PEP 8 规范
-- ✅ Import 语句统一放在文件顶部
-- ✅ 添加类型注解和文档字符串
-- ✅ 补充单元测试（测试文件放在 `tests/` 目录）
-- ✅ 避免代码重复（DRY 原则）
-
-### 项目结构
-```
-academic-paper-qa/
-├── src/                # 核心源代码
-├── config/             # 配置模块
-├── tests/              # 测试文件
-├── examples/           # 示例代码
-├── docs/               # 文档
-│   ├── FEATURES.md     # 功能介绍
-│   ├── USER_GUIDE.md   # 使用指南
-│   └── DEVELOPER_GUIDE.md  # 开发指南
-└── data/               # 数据目录
-```
-
-**文档说明**：
-- 📋 [FEATURES.md](docs/FEATURES.md) - 详细的功能介绍
-- 📖 [USER_GUIDE.md](docs/USER_GUIDE.md) - 完整的使用指南
-- 👨‍💻 [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) - 开发者文档和 API 参考
-
 ---
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+MIT License
 
----
+<details>
+<summary><b>Q: 一次可以加载多少篇论文？</b></summary>
 
-## 🙏 致谢
+A: 理论上无限制，实际受限于内存和模型上下文长度。测试过 100+ 篇论文，检索性能依然良好。
+</details>
 
-- [LlamaIndex](https://www.llamaindex.ai/) - 强大的 RAG 框架
-- [Chroma](https://www.trychroma.com/) - 高效的向量数据库
-- [Gradio](https://gradio.app/) - 快速构建 ML Web 应用
-- [BAAI](https://www.baai.ac.cn/) - 优秀的中文 Embedding 模型
-
----
-
-## 📞 联系方式
-
-- 📧 Email: your-email@example.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/academic-paper-qa/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/academic-paper-qa/discussions)
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给我们一个 Star！**
-
-[快速开始](#-快速开始3-步上手) · [查看文档](docs/USER_GUIDE.md) · [功能介绍](docs/FEATURES.md) · [开发指南](docs/DEVELOPER_GUIDE.md)
-
-</div>

@@ -1,13 +1,13 @@
 """
-Web 搜索工具模块
+"""Web 搜索工具模块
 支持多个搜索引擎：DuckDuckGo (ddgs)、Google (通过 SerpAPI)、SearXNG
 """
 
 from typing import List, Dict, Optional
-import os
 import json
 
 from loguru import logger
+from config.models import get_config
 
 try:
     from ddgs import DDGS
@@ -32,8 +32,8 @@ class WebSearchTool:
     
     def __init__(
         self, 
-        max_results: int = 5,
-        engine: str = "duckduckgo",
+        max_results: Optional[int] = None,
+        engine: Optional[str] = None,
         serpapi_key: Optional[str] = None,
         searxng_url: Optional[str] = None
     ):
@@ -41,15 +41,16 @@ class WebSearchTool:
         初始化 Web 搜索工具
         
         Args:
-            max_results: 最大返回结果数
-            engine: 搜索引擎 ("duckduckgo", "searxng", "serpapi")
-            serpapi_key: SerpAPI 的 API Key（使用 serpapi 时需要）
-            searxng_url: SearXNG 实例 URL（使用 searxng 时需要）
+            max_results: 最大返回结果数（可选，默认从配置读取）
+            engine: 搜索引擎 ("duckduckgo", "searxng", "serpapi")（可选，默认从配置读取）
+            serpapi_key: SerpAPI 的 API Key（可选，默认从配置读取）
+            searxng_url: SearXNG 实例 URL（可选，默认从配置读取）
         """
-        self.max_results = max_results
-        self.engine = engine.lower()
-        self.serpapi_key = serpapi_key or os.getenv("SERPAPI_KEY")
-        self.searxng_url = searxng_url or os.getenv("SEARXNG_URL", "https://searx.be")
+        config = get_config()
+        self.max_results = max_results or config.web_search.max_results
+        self.engine = (engine or config.web_search.search_engine).lower()
+        self.serpapi_key = serpapi_key or config.web_search.serpapi_key
+        self.searxng_url = searxng_url or config.web_search.searxng_url
         
         # 验证依赖
         if self.engine == "duckduckgo" and DDGS is None:

@@ -1,153 +1,566 @@
-# AI 模拟面试系统 - 开发指南
+# 开发指南
 
-本指南面向开发者，介绍如何进行二次开发、功能扩展和系统定制。
+面向开发者，介绍二次开发、功能扩展和系统定制。
 
 ## 📋 目录
 
-- [开发环境搭建](#开发环境搭建)
-- [项目架构](#项目架构)
-- [核心模块详解](#核心模块详解)
+- [环境搭建](#环境搭建)
+- [架构概览](#架构概览)
+- [核心模块](#核心模块)
 - [扩展开发](#扩展开发)
-- [调试与测试](#调试与测试)
+- [测试与调试](#测试与调试)
 - [部署指南](#部署指南)
-- [常见问题](#常见问题)
 
 ---
 
-## 开发环境搭建
+## 环境搭建
 
 ### 环境要求
 
 - Python 3.9+
 - pip 20.0+
 - Git
-- 代码编辑器（推荐 VS Code）
 
-### 开发环境配置
+### 开发配置
 
-1. **克隆项目**
 ```bash
-git clone https://github.com/yourusername/interview-coach.git
+# 1. 克隆并进入项目
+git clone <repository-url>
 cd interview-coach
-```
 
-2. **创建虚拟环境**（推荐）
-```bash
-# 使用 venv
+# 2. 创建虚拟环境（推荐）
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate  # Windows
+source venv/bin/activate  # macOS/Linux
+# venv\Scripts\activate   # Windows
 
-# 或使用 conda
-conda create -n interview-coach python=3.9
-conda activate interview-coach
-```
-
-3. **安装依赖**
-```bash
-# 安装核心依赖
+# 3. 安装依赖
 pip install -r requirements.txt
 
-# 安装开发依赖（可选）
-pip install pytest black flake8 mypy
-```
+# 4. 安装开发工具（可选）
+pip install pytest black isort mypy flake8
 
-4. **配置环境变量**
-```bash
+# 5. 配置环境
 cp .env.example .env
-# 编辑 .env 文件，填写开发用的API密钥
-```
-
-5. **验证安装**
-```bash
-python -c "import gradio; import openai; print('Environment OK')"
+# 编辑 .env，填写 API 密钥
 ```
 
 ---
 
-## 项目架构
+## 架构概览
 
-### 整体架构
+### 目录结构
 
 ```
 interview-coach/
-├── config/                    # 配置层
-│   ├── __init__.py
-│   ├── llm_config.py         # LLM客户端配置
-│   ├── prompts.py            # Prompt模板管理
-│   └── settings.py           # 系统配置
+├── config/              # 配置管理
+│   ├── llm_config.py   # LLM 客户端
+│   ├── prompts.py      # Prompt 模板
+│   └── settings.py     # Pydantic Settings
 │
-├── src/                       # 业务逻辑层
-│   ├── __init__.py
-│   ├── constants.py          # 常量定义
-│   │
-│   ├── loaders/              # 数据加载模块
-│   │   ├── __init__.py
-│   │   └── resume_loader.py
-│   │
-│   ├── evaluator/            # 评估模块
-│   │   ├── __init__.py
-│   │   └── resume_evaluator.py
-│   │
-│   ├── interview/            # 面试模块
-│   │   ├── __init__.py
-│   │   └── interview_agent.py
-│   │
-│   ├── tools/                # 工具模块
-│   │   ├── __init__.py
-│   │   └── web_search.py
-│   │
-│   └── utils/                # 工具函数
-│       ├── __init__.py
-│       ├── logger.py
-│       └── helpers.py
+├── src/
+│   ├── models/         # Pydantic 数据模型
+│   │   ├── resume.py
+│   │   ├── evaluation.py
+│   │   └── interview.py
+│   ├── loaders/        # 简历加载器
+│   ├── evaluator/      # 评估引擎
+│   ├── interview/      # 面试代理
+│   ├── tools/          # 工具模块
+│   ├── utils/          # 工具函数
+│   └── exceptions.py   # 异常定义
 │
-├── data/                      # 数据层
-│   ├── resumes/              # 简历存储
-│   └── cache/                # 缓存文件
-│
-├── logs/                      # 日志文件
-├── docs/                      # 文档
-│
-├── web_ui.py                 # UI层（Gradio）
-├── init_system.py            # 系统初始化
-└── requirements.txt          # 依赖管理
+├── tests/              # 测试
+├── web_ui.py          # Gradio UI
+└── quick_start.py     # CLI 示例
 ```
 
-### 架构设计原则
+### 架构原则
 
-1. **模块化**：每个模块职责单一，低耦合
-2. **配置驱动**：核心配置集中管理，易于修改
-3. **可扩展**：预留扩展接口，方便添加新功能
-4. **简洁性**：直接使用OpenAI SDK，不引入复杂框架
-5. **可维护**：完善的日志和错误处理
+1. **模块化**: 职责单一,低耦合
+2. **类型安全**: Pydantic v2 数据验证
+3. **配置驱动**: 集中配置管理
+4. **可扩展**: 预留扩展接口
+5. **可测试**: 完整测试覆盖
 
 ---
 
-## 核心模块详解
+## 核心模块
 
-### 1. 配置模块 (config/)
+### 1. 数据模型 (src/models/)
 
-#### llm_config.py - LLM配置
+使用 **Pydantic v2** 实现类型安全的数据模型。
 
-**核心功能**：
-- 从环境变量读取LLM配置
-- 创建OpenAI客户端实例
-- 支持多种LLM服务商
+#### resume.py - 简历数据
 
-**关键函数**：
 ```python
-def get_llm_client() -> Tuple[OpenAI, str, float]:
-    """
-    获取LLM客户端实例
+from pydantic import BaseModel, Field, computed_field
+
+class ResumeMetadata(BaseModel):
+    """简历元数据"""
+    filename: str
+    file_size: int
+    page_count: int = 0
     
-    Returns:
-        (client, model, temperature)
-    """
+    @computed_field
+    @property
+    def file_size_mb(self) -> float:
+        return round(self.file_size / (1024 * 1024), 2)
+
+class ResumeData(BaseModel):
+    """简历完整数据"""
+    content: str = Field(..., description="简历文本内容")
+    metadata: ResumeMetadata
+    
+    @computed_field
+    @property
+    def word_count(self) -> int:
+        return len(self.content)
 ```
 
-**扩展示例**：添加新的LLM服务商
+**扩展示例**: 添加新字段
 ```python
+class ResumeData(BaseModel):
+    # 新增字段
+    parsed_sections: dict[str, str] = Field(
+        default_factory=dict,
+        description="解析的简历章节"
+    )
+```
+
+#### evaluation.py - 评估结果
+
+```python
+class ScoreDetails(BaseModel):
+    """评分详情"""
+    basic_info: int = Field(ge=0, le=10)
+    work_experience: int = Field(ge=0, le=10)
+    project_quality: int = Field(ge=0, le=10)
+    skills_match: int = Field(ge=0, le=10)
+    education: int = Field(ge=0, le=10)
+    overall_impression: int = Field(ge=0, le=10)
+    
+    @computed_field
+    @property
+    def total_score(self) -> float:
+        return round(
+            (self.basic_info + self.work_experience + 
+             self.project_quality + self.skills_match + 
+             self.education + self.overall_impression) / 6 * 10,
+            1
+        )
+```
+
+#### interview.py - 面试会话
+
+```python
+from enum import Enum
+
+class MessageRole(str, Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+
+class InterviewType(str, Enum):
+    TECHNICAL = "technical"
+    BEHAVIORAL = "behavioral"
+    COMPREHENSIVE = "comprehensive"
+
+class InterviewMessage(BaseModel):
+    role: MessageRole
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+class InterviewSession(BaseModel):
+    messages: list[InterviewMessage] = Field(default_factory=list)
+    interview_type: InterviewType = InterviewType.COMPREHENSIVE
+```
+
+### 2. 配置管理 (config/settings.py)
+
+使用 **Pydantic Settings** 管理配置。
+
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+
+class SystemConfig(BaseSettings):
+    """系统配置 - 自动从环境变量加载"""
+    
+    # LLM 配置
+    llm_api_key: str = Field(..., description="LLM API密钥")
+    llm_api_base: str = Field(
+        default="https://api.openai.com/v1",
+        description="API端点"
+    )
+    llm_model: str = Field(
+        default="gpt-3.5-turbo",
+        description="模型名称"
+    )
+    
+    # 路径配置
+    base_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent)
+    
+    @computed_field
+    @property
+    def data_dir(self) -> Path:
+        return self.base_dir / "data"
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
+
+# 单例模式
+_config_instance = None
+
+def get_config() -> SystemConfig:
+    global _config_instance
+    if _config_instance is None:
+        _config_instance = SystemConfig()
+    return _config_instance
+```
+
+### 3. 异常处理 (src/exceptions.py)
+
+```python
+class InterviewCoachException(Exception):
+    """基础异常"""
+    pass
+
+class ResumeLoadError(InterviewCoachException):
+    """简历加载失败"""
+    pass
+
+class LLMAPIError(InterviewCoachException):
+    """LLM API调用失败"""
+    pass
+
+class EvaluationError(InterviewCoachException):
+    """评估处理失败"""
+    pass
+```
+
+### 4. 简历加载器 (src/loaders/)
+
+```python
+import fitz  # PyMuPDF
+from src.models.resume import ResumeData, ResumeMetadata
+from src.exceptions import ResumeLoadError
+
+class ResumeLoader:
+    def load_pdf(self, file_path: str) -> ResumeData:
+        """加载PDF简历"""
+        try:
+            doc = fitz.open(file_path)
+            content = "\n".join(
+                page.get_text() for page in doc
+            )
+            
+            metadata = ResumeMetadata(
+                filename=Path(file_path).name,
+                file_size=Path(file_path).stat().st_size,
+                page_count=doc.page_count
+            )
+            
+            return ResumeData(
+                content=content,
+                metadata=metadata
+            )
+        except Exception as e:
+            raise ResumeLoadError(f"加载失败: {e}")
+```
+
+### 5. 评估引擎 (src/evaluator/)
+
+```python
+from openai import OpenAI
+from src.models.evaluation import EvaluationResult
+from src.exceptions import EvaluationError
+
+class ResumeEvaluator:
+    def __init__(self, client: OpenAI, model: str):
+        self.client = client
+        self.model = model
+    
+    def evaluate(
+        self, 
+        resume: ResumeData,
+        job_title: str = "",
+        job_requirements: str = ""
+    ) -> EvaluationResult:
+        """评估简历"""
+        try:
+            prompt = self._build_prompt(
+                resume, job_title, job_requirements
+            )
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            
+            # 解析为 Pydantic 模型
+            result_dict = json.loads(
+                response.choices[0].message.content
+            )
+            return EvaluationResult(**result_dict)
+            
+        except Exception as e:
+            raise EvaluationError(f"评估失败: {e}")
+```
+
+---
+
+## 扩展开发
+
+### 添加新的评估维度
+
+1. **修改数据模型** (`src/models/evaluation.py`):
+```python
+class ScoreDetails(BaseModel):
+    # 原有字段...
+    
+    # 新增字段
+    soft_skills: int = Field(
+        ge=0, le=10,
+        description="软技能评分"
+    )
+    
+    @computed_field
+    @property
+    def total_score(self) -> float:
+        # 更新计算逻辑
+        return round(
+            (self.basic_info + ... + self.soft_skills) / 7 * 10,
+            1
+        )
+```
+
+2. **更新 Prompt** (`config/prompts.py`):
+```python
+EVALUATION_PROMPT = """
+评估维度：
+...
+7. 软技能（0-10分）：沟通、领导力等
+"""
+```
+
+3. **测试新功能**:
+```python
+def test_new_dimension():
+    result = evaluator.evaluate(resume)
+    assert hasattr(result.scores, 'soft_skills')
+    assert 0 <= result.scores.soft_skills <= 10
+```
+
+### 添加新的面试类型
+
+1. **扩展枚举** (`src/models/interview.py`):
+```python
+class InterviewType(str, Enum):
+    TECHNICAL = "technical"
+    BEHAVIORAL = "behavioral"
+    COMPREHENSIVE = "comprehensive"
+    CASE_STUDY = "case_study"  # 新增
+```
+
+2. **更新 Prompt** (`config/prompts.py`):
+```python
+INTERVIEW_PROMPTS = {
+    InterviewType.CASE_STUDY: """
+    你是案例面试官，专注于业务分析能力...
+    """
+}
+```
+
+3. **UI 集成** (`web_ui.py`):
+```python
+interview_type = gr.Radio(
+    choices=[
+        "技术面试",
+        "行为面试", 
+        "综合面试",
+        "案例分析"  # 新增
+    ]
+)
+```
+
+### 添加新的数据源
+
+示例：支持 Word 文档
+
+```python
+# src/loaders/resume_loader.py
+from docx import Document
+
+class ResumeLoader:
+    def load_docx(self, file_path: str) -> ResumeData:
+        """加载Word简历"""
+        try:
+            doc = Document(file_path)
+            content = "\n".join(
+                para.text for para in doc.paragraphs
+            )
+            
+            metadata = ResumeMetadata(
+                filename=Path(file_path).name,
+                file_size=Path(file_path).stat().st_size,
+                page_count=len(doc.sections)
+            )
+            
+            return ResumeData(
+                content=content,
+                metadata=metadata
+            )
+        except Exception as e:
+            raise ResumeLoadError(f"加载Word失败: {e}")
+```
+
+---
+
+## 测试与调试
+
+### 运行测试
+
+```bash
+# 运行所有测试
+pytest
+
+# 运行特定测试文件
+pytest tests/test_loader.py
+
+# 查看覆盖率
+pytest --cov=src tests/
+
+# 详细输出
+pytest -v -s
+```
+
+### 代码质量检查
+
+```bash
+# 格式化代码
+black .
+isort .
+
+# 类型检查
+mypy src/
+
+# 代码风格
+flake8 src/
+```
+
+### 调试技巧
+
+**1. 日志调试**:
+```python
+from src.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
+logger.debug(f"Resume content: {resume.content[:100]}")
+```
+
+**2. Pydantic 验证调试**:
+```python
+try:
+    resume = ResumeData(**data)
+except ValidationError as e:
+    print(e.json())  # 查看详细错误
+```
+
+**3. LLM 响应调试**:
+```python
+# 打印完整响应
+response = client.chat.completions.create(...)
+print(response.model_dump_json(indent=2))
+```
+
+---
+
+## 部署指南
+
+### 本地部署
+
+```bash
+# 启动 Web UI
+python web_ui.py
+
+# 自定义端口
+python web_ui.py --server-port 8080
+```
+
+### Docker 部署
+
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+EXPOSE 7861
+
+CMD ["python", "web_ui.py", "--server-name", "0.0.0.0"]
+```
+
+```bash
+# 构建镜像
+docker build -t interview-coach .
+
+# 运行容器
+docker run -p 7861:7861 \
+  -e LLM_API_KEY=your_key \
+  -e LLM_API_BASE=https://api.openai.com/v1 \
+  interview-coach
+```
+
+### 生产环境建议
+
+1. **安全**:
+   - 使用密钥管理服务存储 API 密钥
+   - 启用 HTTPS
+   - 添加身份认证
+
+2. **性能**:
+   - 配置合适的并发数
+   - 启用响应缓存
+   - 使用负载均衡
+
+3. **监控**:
+   - 接入日志收集系统
+   - 配置性能监控
+   - 设置告警规则
+
+---
+
+## 常见问题
+
+### Q: 如何切换 LLM 服务商?
+**A**: 修改 `.env` 文件中的 `LLM_API_BASE` 和 `LLM_MODEL`。
+
+### Q: 如何自定义 Prompt?
+**A**: 编辑 `config/prompts.py`,所有 Prompt 模板集中管理。
+
+### Q: Pydantic 验证失败怎么办?
+**A**: 检查输入数据格式,查看 `ValidationError` 详细信息。
+
+### Q: 如何添加新的配置项?
+**A**: 在 `config/settings.py` 的 `SystemConfig` 中添加字段,支持从环境变量自动加载。
+
+---
+
+## 参考资源
+
+- [Pydantic 文档](https://docs.pydantic.dev/)
+- [OpenAI API 文档](https://platform.openai.com/docs)
+- [Gradio 文档](https://gradio.app/docs/)
+- [PyMuPDF 文档](https://pymupdf.readthedocs.io/)
+
+---
+
+如需更多帮助,欢迎提交 Issue!
 # 在 get_llm_client 中添加
 if api_base.endswith("your-llm-service.com"):
     # 添加特定配置

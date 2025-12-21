@@ -1,8 +1,9 @@
 """
 LLM 和 Embedding 模型配置模块
+
+基于 Pydantic 配置模型
 """
 
-import os
 from typing import Optional
 
 from llama_index.core.embeddings import BaseEmbedding
@@ -10,6 +11,8 @@ from llama_index.core.llms import LLM
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from loguru import logger
+
+from .models import get_config
 
 
 def get_llm(
@@ -21,21 +24,20 @@ def get_llm(
     获取 LLM 实例
     
     Args:
-        api_key: API Key（可选，默认从环境变量读取）
-        api_base: API Base URL（可选，默认从环境变量读取）
-        model: 模型名称（可选，默认从环境变量读取）
+        api_key: API Key（可选，默认从配置读取）
+        api_base: API Base URL（可选，默认从配置读取）
+        model: 模型名称（可选，默认从配置读取）
         
     Returns:
         LLM 实例
     """
-    # 从环境变量获取配置
-    api_key = api_key or os.getenv("LLM_API_KEY")
-    api_base = api_base or os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
-    model = model or os.getenv("LLM_MODEL", "gpt-3.5-turbo")
-    temperature = float(os.getenv("TEMPERATURE", "0.1"))
+    config = get_config()
     
-    if not api_key:
-        raise ValueError("LLM_API_KEY 未设置，请在 .env 文件中配置")
+    # 使用传入参数或配置中的值
+    api_key = api_key or config.llm.api_key
+    api_base = api_base or config.llm.api_base
+    model = model or config.llm.model
+    temperature = config.llm.temperature
     
     # 判断是否是 OpenAI 官方 API
     if "api.openai.com" in api_base:
@@ -46,6 +48,8 @@ def get_llm(
             api_base=api_base,
             model=model,
             temperature=temperature,
+            timeout=config.llm.timeout,
+            max_tokens=config.llm.max_tokens,
         )
     else:
         # 使用 OpenAILike 适配其他 OpenAI 兼容的 API（DeepSeek, Qwen 等）
@@ -59,6 +63,8 @@ def get_llm(
                 model=model,
                 temperature=temperature,
                 is_chat_model=True,
+                timeout=config.llm.timeout,
+                max_tokens=config.llm.max_tokens,
             )
         except Exception as e:
             # 如果 OpenAILike 导入失败（依赖问题），回退到 OpenAI 类
@@ -69,6 +75,8 @@ def get_llm(
                 api_base=api_base,
                 model=model,
                 temperature=temperature,
+                timeout=config.llm.timeout,
+                max_tokens=config.llm.max_tokens,
             )
 
 
@@ -82,24 +90,15 @@ def get_embedding_model(provider: Optional[str] = None) -> BaseEmbedding:
     Returns:
         Embedding 模型实例
     """
-    provider = provider or os.getenv("EMBEDDING_PROVIDER", "huggingface")
+    config = get_config()
+    provider = provider or config.embedding.provider
     
     logger.info(f"Embedding 提供商: {provider}")
     
     if provider == "openai":
         # 使用 OpenAI Embedding
-        # 优先使用 EMBEDDING_API_KEY，如果未设置则回退到 LLM_API_KEY
-        api_key = os.getenv("EMBEDDING_API_KEY") or os.getenv("LLM_API_KEY")
-        model = os.getenv("EMBEDDING_MODEL_NAME", "text-embedding-3-small")
-        
-        if not api_key:
-            raise ValueError(
-                "EMBEDDING_API_KEY 或 LLM_API_KEY 未设置\n"
-                "请在 .env 文件中配置:\n"
-                "  LLM_API_KEY=your-api-key\n"
-                "或\n"
-                "  EMBEDDING_API_KEY=your-embedding-api-key"
-            )
+        api_key = config.embedding.api_key or config.llm.api_key
+        model = config.embedding.model_name
         
         logger.info(f"使用 OpenAI Embedding: {model}")
         return OpenAIEmbedding(
@@ -111,10 +110,7 @@ def get_embedding_model(provider: Optional[str] = None) -> BaseEmbedding:
         # 使用本地 HuggingFace Embedding 模型
         logger.info(f"准备加载本地 Embedding 模型...")
         
-        # 支持两种环境变量名：
-        # - EMBEDDING_MODEL: 本地模型路径（如 /path/to/model）
-        # - EMBEDDING_MODEL_NAME: HuggingFace 模型名称（如 BAAI/bge-small-zh-v1.5）
-        model_name = os.getenv("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-small-zh-v1.5")
+        model_name = config.embedding.model_name
         
         try:
             from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -122,10 +118,15 @@ def get_embedding_model(provider: Optional[str] = None) -> BaseEmbedding:
             logger.info(f"正在加载 HuggingFace Embedding 模型: {model_name}")
             logger.info("首次加载可能需要下载模型，请耐心等待...")
             
-            embedding = HuggingFaceEmbedding(
-                model_name=model_name,
-                embed_batch_size=32,
-            )
+            kwargs = {
+                "model_name": model_name,
+                "embed_batch_size": config.embedding.batch_size,
+            }
+            
+            if config.embedding.cache_folder:
+                kwargs["cache_folder"] = config.embedding.cache_folder
+            
+            embedding = HuggingFaceEmbedding(**kwargs)
             
             logger.info(f"✅ Embedding 模型加载成功: {model_name}")
             return embedding
@@ -167,7 +168,7 @@ def get_embedding_model(provider: Optional[str] = None) -> BaseEmbedding:
         # 使用 FastEmbed（轻量级，推荐）
         logger.info(f"准备加载 FastEmbed 模型...")
         
-        model_name = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-small-zh-v1.5")
+        model_name = config.embedding.model_name
         
         try:
             from llama_index.embeddings.fastembed import FastEmbedEmbedding

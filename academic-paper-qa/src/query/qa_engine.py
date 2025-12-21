@@ -9,7 +9,7 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
 from loguru import logger
 
-from config import SystemConfig
+from config.models import get_config
 
 
 class QAEngine:
@@ -29,9 +29,10 @@ class QAEngine:
             top_k: 检索 Top-K 文档数量
             similarity_threshold: 相似度阈值
         """
+        config = get_config()
         self.index = index
-        self.top_k = top_k or SystemConfig.RETRIEVAL_TOP_K
-        self.similarity_threshold = similarity_threshold or SystemConfig.RETRIEVAL_SIMILARITY_THRESHOLD
+        self.top_k = top_k or config.rag.retrieval_top_k
+        self.similarity_threshold = similarity_threshold or config.rag.retrieval_similarity_threshold
         
         # 创建查询引擎
         self.query_engine = self._create_query_engine()
