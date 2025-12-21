@@ -8,7 +8,7 @@ echo "========================================"
 echo ""
 
 # 检查 Python 版本
-python_version=$(python3 --version 2>&1 | awk '{print $2}')
+python_version=$(python --version 2>&1 | awk '{print $2}')
 echo "✓ Python 版本: $python_version"
 
 # 检查 .env 文件
@@ -32,7 +32,7 @@ echo "✓ .env 文件存在"
 echo ""
 echo "检查依赖..."
 
-if ! python3 -c "import gradio" 2>/dev/null; then
+if ! python -c "import gradio" 2>/dev/null; then
     echo "⚠️  缺少依赖包，正在安装..."
     pip install -r requirements.txt
 else
@@ -49,4 +49,4 @@ echo "访问地址: http://localhost:7860"
 echo "按 Ctrl+C 停止服务"
 echo ""
 
-python3 web_ui.py
+python web_ui.py
