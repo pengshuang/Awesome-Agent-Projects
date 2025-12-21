@@ -1,1021 +1,516 @@
-# 开发指南
+# 开发者指南
 
-> 面向希望进行二次开发的开发者
+本指南面向开发者，介绍如何进行二次开发和扩展。
 
----
+## 📋 目录
 
-## 📁 项目结构
+- [项目架构](#项目架构)
+- [核心模块](#核心模块)
+- [扩展开发](#扩展开发)
+- [数据模型](#数据模型)
+- [最佳实践](#最佳实践)
+
+## 项目架构
+
+### 目录结构
 
 ```
 ai-data-analyst/
-├── config/                  # 配置模块
-│   ├── settings.py         # 系统配置
-│   ├── llm_config.py       # LLM 配置
-│   └── prompts.py          # Prompt 模板管理
+├── config/                 # 配置模块
+│   ├── settings.py        # 系统配置（Pydantic Settings）
+│   ├── llm_config.py      # LLM 配置
+│   └── prompts.py         # Prompt 模板
 ├── src/
-│   ├── agent.py            # 核心 Agent
-│   ├── datasources/        # 数据源适配器
-│   │   ├── base.py        # 数据源基类
+│   ├── models/            # Pydantic 数据模型
+│   │   ├── config.py      # 配置模型
+│   │   ├── datasource.py  # 数据源模型
+│   │   └── analysis.py    # 分析模型
+│   ├── datasources/       # 数据源适配器
+│   │   ├── base.py        # 基类
 │   │   ├── sqlite_source.py
 │   │   ├── file_source.py
 │   │   ├── knowledge_base.py
 │   │   └── web_source.py
-│   ├── analyzers/          # 分析引擎
+│   ├── analyzers/         # 数据分析器
 │   │   └── data_analyzer.py
-│   ├── tools/              # 工具模块
-│   │   └── nl2sql.py
-│   └── utils/              # 工具函数
-│       ├── logger.py
-│       └── helpers.py
-├── data/                    # 数据目录
-├── logs/                    # 日志目录
-├── web_ui.py               # Web 界面
-└── init_system.py          # 系统初始化
+│   ├── tools/             # 工具模块
+│   │   └── nl2sql.py      # NL2SQL 转换
+│   ├── ui/                # UI 组件
+│   └── utils/             # 工具函数
+├── data/                  # 数据目录
+│   ├── databases/         # SQLite 数据库
+│   ├── files/             # 数据文件
+│   └── cache/             # 缓存
+├── docs/                  # 文档
+├── examples/              # 示例代码
+├── logs/                  # 日志
+├── web_ui.py             # Web 界面入口
+└── requirements.txt       # 依赖
 ```
 
----
-
-## 🏗️ 核心架构
-
-### 模块关系
+### 架构设计
 
 ```
-Web UI (Gradio)
-    ↓
-DataAnalystAgent (Agent)
-    ↓
-DataAnalyzer (分析引擎)
-    ↓
-DataSource (数据源接口)
-    ├── SQLiteDataSource
-    ├── FileDataSource
-    ├── KnowledgeBaseSource
-    └── WebSearchSource
+┌─────────────┐
+│  Web UI    │  Gradio 界面
+└──────┬──────┘
+       │
+┌──────▼──────────────────┐
+│  DataAnalystAgent       │  核心 Agent
+│  - 对话管理             │
+│  - 数据源管理           │
+│  - 分析调度             │
+└──────┬──────────────────┘
+       │
+   ┌───┴───┬─────────┬──────────┐
+   │       │         │          │
+┌──▼──┐ ┌─▼──┐  ┌───▼───┐  ┌──▼────┐
+│ SQL │ │File│  │  KB   │  │  Web  │
+└──┬──┘ └─┬──┘  └───┬───┘  └──┬────┘
+   │      │         │         │
+   └──────┴─────────┴─────────┘
+          数据源适配层
 ```
 
-### 核心类说明
+## 核心模块
 
-#### 1. DataAnalystAgent (`src/agent.py`)
+### 1. 数据模型 (src/models/)
 
-**职责**: 核心对话代理，管理多轮对话和数据源
+使用 Pydantic v2 进行数据验证：
 
-**关键方法**:
 ```python
-class DataAnalystAgent:
-    def __init__(self, max_history_turns: int = 10)
-    def register_sqlite_database(self, name: str, db_path: str) -> bool
-    def register_file(self, name: str, file_path: str) -> bool
-    def chat(self, message: str, source_name: Optional[str] = None) -> str
-    def clear_history()
+from src.models.config import SystemSettings
+from src.models.datasource import QueryRequest, QueryResponse
+
+# 系统配置（自动从 .env 加载）
+settings = SystemSettings()
+
+# 查询请求
+request = QueryRequest(
+    query="SELECT * FROM users",
+    data_source="my_db",
+    limit=100,
+)
+
+# 查询响应（自动验证）
+response = QueryResponse(
+    success=True,
+    data=[...],
+    metadata=QueryMetadata(...)
+)
 ```
 
-#### 2. DataSource (`src/datasources/base.py`)
+详见 [Pydantic 数据验证指南](PYDANTIC_GUIDE.md)
 
-**职责**: 数据源基类，定义统一接口
+### 2. 数据源适配器 (src/datasources/)
 
-**接口定义**:
+所有数据源继承 `DataSource` 基类：
+
 ```python
-class DataSource(ABC):
-    @abstractmethod
-    def connect(self) -> bool
+from src.datasources.base import DataSource
+from src.models.datasource import QueryResponse
+
+class CustomDataSource(DataSource):
+    def __init__(self, name: str):
+        super().__init__(name, "custom")
     
-    @abstractmethod
-    def query(self, query: str, **kwargs) -> Dict[str, Any]
+    def connect(self) -> bool:
+        # 实现连接逻辑
+        return True
     
-    @abstractmethod
-    def get_schema(self) -> Optional[str]
+    def query(self, query: str, **kwargs) -> QueryResponse:
+        # 实现查询逻辑
+        return QueryResponse(
+            success=True,
+            data=[...],
+            metadata=QueryMetadata(...)
+        )
     
-    @abstractmethod
-    def close()
+    def get_schema(self) -> str:
+        # 返回 schema 描述
+        return "..."
+    
+    def close(self):
+        # 清理资源
+        pass
 ```
 
-#### 3. DataAnalyzer (`src/analyzers/data_analyzer.py`)
+### 3. Agent (src/agent.py)
 
-**职责**: 数据分析引擎
+核心对话代理：
 
-**关键方法**:
 ```python
-class DataAnalyzer:
-    def analyze_single_source(self, question: str, source_name: str) -> Dict
-    def analyze_multi_sources(self, question: str, source_names: List[str]) -> Dict
+from src.agent import DataAnalystAgent
+
+# 创建 Agent
+agent = DataAnalystAgent(max_history_turns=10)
+
+# 注册数据源
+agent.register_sqlite_database("my_db", "path/to/db.sqlite")
+
+# 对话查询
+response = agent.chat("查询销售数据", data_sources=["my_db"])
 ```
 
-#### 4. PromptTemplates (`config/prompts.py`)
-
-**职责**: 统一管理所有 LLM Prompt
-
-**模板分类**:
-- `SYSTEM_DEFAULT` - 系统提示词
-- `NL2SQL_TEMPLATE` - SQL 生成
-- `DATA_ANALYSIS_TEMPLATE` - 数据分析
-- `MULTI_SOURCE_ANALYSIS` - 多源分析
-
----
-
-## 🔧 二次开发
+## 扩展开发
 
 ### 添加新数据源
 
-#### 步骤 1: 创建数据源类
-
-在 `src/datasources/` 创建新文件：
+1. **创建数据源类**
 
 ```python
-# src/datasources/my_source.py
+# src/datasources/mysql_source.py
 from .base import DataSource
-from typing import Any, Dict, Optional
-from loguru import logger
+from src.models.datasource import QueryResponse, QueryMetadata
+import time
 
-class MyDataSource(DataSource):
-    """自定义数据源"""
-    
-    def __init__(self, name: str, connection_params: Dict):
-        super().__init__(name, "my_custom_type")
-        self.params = connection_params
+class MySQLDataSource(DataSource):
+    def __init__(self, name: str, host: str, database: str):
+        super().__init__(name, "mysql")
+        self.host = host
+        self.database = database
         self.connection = None
     
     def connect(self) -> bool:
-        """建立连接"""
         try:
-            # 实现连接逻辑
-            self.connection = establish_connection(self.params)
-            logger.info(f"✅ 已连接到 {self.name}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ 连接失败: {e}")
-            return False
-    
-    def query(self, query: str, **kwargs) -> Dict[str, Any]:
-        """执行查询"""
-        try:
-            result = self.connection.execute(query)
-            return {
-                "success": True,
-                "data": result,
-                "error": None,
-                "metadata": {"row_count": len(result)}
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "data": None,
-                "error": str(e),
-                "metadata": {}
-            }
-    
-    def get_schema(self) -> Optional[str]:
-        """返回数据结构描述"""
-        return "字段1: 类型\n字段2: 类型..."
-    
-    def close(self):
-        """关闭连接"""
-        if self.connection:
-            self.connection.close()
-```
-
-#### 步骤 2: 在 Agent 中添加注册方法
-
-```python
-# src/agent.py
-def register_my_datasource(self, name: str, **params) -> bool:
-    """注册自定义数据源"""
-    try:
-        source = MyDataSource(name, params)
-        if source.connect():
-            self.analyzer.register_data_source(name, source)
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"注册失败: {e}")
-        return False
-```
-
-#### 步骤 3: 在 Web UI 中添加界面
-
-```python
-# web_ui.py
-def register_my_source(name: str, param1: str, param2: str):
-    """Web UI 回调"""
-    if not INITIALIZED:
-        return "❌ 请先初始化系统"
-    
-    success = AGENT.register_my_datasource(
-        name=name,
-        param1=param1,
-        param2=param2
-    )
-    
-    if success:
-        return f"## ✅ 注册成功\n\n数据源名称: {name}"
-    else:
-        return "❌ 注册失败"
-
-# 添加 Gradio 组件
-with gr.Column():
-    gr.Markdown("### 自定义数据源")
-    my_name = gr.Textbox(label="名称")
-    my_param1 = gr.Textbox(label="参数1")
-    my_param2 = gr.Textbox(label="参数2")
-    my_register_btn = gr.Button("➕ 注册")
-    my_result = gr.Markdown()
-
-my_register_btn.click(
-    fn=register_my_source,
-    inputs=[my_name, my_param1, my_param2],
-    outputs=my_result
-)
-```
-
-### 自定义 Prompt 模板
-
-#### 添加新模板
-
-```python
-# config/prompts.py
-class PromptTemplates:
-    # 添加自定义模板
-    MY_CUSTOM_TEMPLATE = """你是一个专业的{domain}分析师。
-
-任务：{task}
-
-数据：
-{data}
-
-要求：
-1. {requirement1}
-2. {requirement2}
-
-输出："""
-
-class PromptBuilder:
-    @staticmethod
-    def build_my_custom_prompt(domain: str, task: str, 
-                                data: str, **kwargs) -> str:
-        """构建自定义 Prompt"""
-        return PromptTemplates.MY_CUSTOM_TEMPLATE.format(
-            domain=domain,
-            task=task,
-            data=data,
-            requirement1=kwargs.get("req1", ""),
-            requirement2=kwargs.get("req2", "")
-        )
-```
-
-#### 使用自定义模板
-
-```python
-# 在分析引擎或 Agent 中使用
-from config.prompts import PromptBuilder
-
-prompt = PromptBuilder.build_my_custom_prompt(
-    domain="金融",
-    task="分析股票趋势",
-    data=stock_data,
-    req1="识别关键转折点",
-    req2="提供投资建议"
-)
-
-response = self.llm.complete(prompt)
-```
-
-### 扩展分析功能
-
-#### 添加自定义分析器
-
-```python
-# src/analyzers/custom_analyzer.py
-from typing import Dict, Any
-from loguru import logger
-
-class CustomAnalyzer:
-    """自定义分析器"""
-    
-    def __init__(self, llm):
-        self.llm = llm
-    
-    def analyze(self, data: Any, question: str) -> Dict[str, Any]:
-        """执行自定义分析"""
-        try:
-            # 构建 Prompt
-            prompt = self._build_prompt(data, question)
-            
-            # 调用 LLM
-            response = self.llm.complete(prompt)
-            
-            return {
-                "success": True,
-                "result": response.text,
-                "insights": self._extract_insights(response.text)
-            }
-        except Exception as e:
-            logger.error(f"分析失败: {e}")
-            return {"success": False, "error": str(e)}
-    
-    def _build_prompt(self, data, question):
-        """构建分析 Prompt"""
-        return f"数据: {data}\n\n问题: {question}\n\n分析:"
-    
-    def _extract_insights(self, text):
-        """提取关键洞察"""
-        # 实现提取逻辑
-        return []
-```
-
-#### 集成到系统
-
-```python
-# src/agent.py
-from src.analyzers.custom_analyzer import CustomAnalyzer
-
-class DataAnalystAgent:
-    def __init__(self, max_history_turns: int = 10):
-        # ... 现有代码
-        self.custom_analyzer = CustomAnalyzer(self.llm)
-    
-    def custom_analysis(self, data: Any, question: str) -> str:
-        """执行自定义分析"""
-        result = self.custom_analyzer.analyze(data, question)
-        if result["success"]:
-            return result["result"]
-        else:
-            return f"分析失败: {result['error']}"
-```
-
----
-
-## 🧪 测试
-
-### 单元测试示例
-
-```python
-# tests/test_my_source.py
-import pytest
-from src.datasources.my_source import MyDataSource
-
-def test_my_source_connect():
-    """测试连接"""
-    source = MyDataSource("test", {"host": "localhost"})
-    assert source.connect() == True
-
-def test_my_source_query():
-    """测试查询"""
-    source = MyDataSource("test", {"host": "localhost"})
-    source.connect()
-    result = source.query("SELECT * FROM table")
-    assert result["success"] == True
-    assert result["data"] is not None
-```
-
-### 运行测试
-
-```bash
-# 运行所有测试
-pytest tests/
-
-# 运行特定测试
-pytest tests/test_my_source.py
-
-# 带覆盖率报告
-pytest --cov=src tests/
-```
-
----
-
-## 📊 日志和调试
-
-### 日志系统
-
-所有 LLM 调用自动记录：
-
-```python
-# 日志位置
-logs/ai_data_analyst_YYYY-MM-DD.log
-
-# 日志内容
-2024-12-21 10:00:00 | INFO | Prompt: [完整的 Prompt]
-2024-12-21 10:00:05 | INFO | Response: [LLM 响应]
-```
-
-### 添加自定义日志
-
-```python
-from loguru import logger
-
-# 不同级别的日志
-logger.debug("调试信息")
-logger.info("常规信息")
-logger.warning("警告信息")
-logger.error("错误信息")
-
-# 带上下文的日志
-logger.info(f"处理请求: {request_id}", extra={"user": user_id})
-```
-
----
-
-## 🚀 部署
-
-### 生产环境配置
-
-```bash
-# .env.production
-LLM_API_KEY=your-production-key
-MAX_HISTORY_TURNS=5
-LOG_LEVEL=INFO
-```
-
-### Docker 部署（可选）
-
-```dockerfile
-# Dockerfile
-FROM python:3.10-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-
-ENV GRADIO_SERVER_NAME=0.0.0.0
-ENV GRADIO_SERVER_PORT=7860
-
-CMD ["python", "web_ui.py"]
-```
-
-```bash
-# 构建和运行
-docker build -t ai-data-analyst .
-docker run -p 7860:7860 --env-file .env ai-data-analyst
-```
-
----
-
-## 📚 API 参考
-
-### DataSource 接口
-
-```python
-def connect() -> bool
-    """建立连接，返回是否成功"""
-
-def query(query: str, **kwargs) -> Dict[str, Any]
-    """执行查询，返回标准格式结果"""
-    # 返回: {"success": bool, "data": Any, "error": str, "metadata": dict}
-
-def get_schema() -> Optional[str]
-    """获取数据结构描述"""
-
-def close()
-    """关闭连接，释放资源"""
-```
-
-### Agent 接口
-
-```python
-def chat(message: str, source_name: Optional[str] = None) -> str
-    """处理用户消息，返回回复"""
-
-def clear_history()
-    """清空对话历史"""
-
-def list_data_sources() -> Dict[str, Any]
-    """列出所有数据源"""
-```
-
----
-
-## 🔗 相关资源
-
-- [📖 功能介绍](FEATURES.md) - 了解所有功能
-- [👤 用户指南](USER_GUIDE.md) - 使用教程
-- [LlamaIndex 文档](https://docs.llamaindex.ai/) - LLM 框架
-- [Gradio 文档](https://www.gradio.app/docs/) - UI 框架
-
----
-
-## 💡 最佳实践
-
-### 代码规范
-
-- 使用类型注解
-- 添加文档字符串
-- 遵循 PEP 8
-- 错误处理完整
-
-### Prompt 设计
-
-- 明确任务目标
-- 提供示例
-- 分步骤指导
-- 输出格式化
-
-### 性能优化
-
-- 缓存常用查询
-- 异步处理IO
-- 限制LLM调用
-- 数据分批处理
-
----
-
-## 🤝 贡献指南
-
-1. Fork 项目
-2. 创建特性分支
-3. 提交代码
-4. 编写测试
-5. 提交 Pull Request
-
-欢迎贡献！
-- 单数据源分析
-- 多数据源融合分析
-- 调用 LLM 生成分析结果
-
-**关键方法**：
-```python
-class DataAnalyzer:
-    def analyze_single_source(self, question: str, source_name: str, **kwargs) -> Dict[str, Any]
-    def analyze_multi_sources(self, question: str, source_names: List[str], **kwargs) -> Dict[str, Any]
-```
-
-#### 4. NL2SQL 工具（`src/tools/nl2sql.py`）
-
-`NL2SQLConverter` 负责自然语言到 SQL 的转换：
-
-```python
-class NL2SQLConverter:
-    def convert(self, question: str, database_schema: str, dialect: str = "sqlite", chat_history: Optional[str] = None) -> Dict[str, Any]
-    def correct_sql(self, sql: str, error: str, database_schema: str, dialect: str = "sqlite") -> Dict[str, Any]
-```
-
-#### 5. Prompt 管理（`config/prompts.py`）
-
-所有 Prompt 模板集中管理：
-
-```python
-class PromptTemplates:
-    SYSTEM_DEFAULT = "..."
-    NL2SQL_TEMPLATE = "..."
-    DATA_ANALYSIS_TEMPLATE = "..."
-    # ... 更多模板
-
-class PromptBuilder:
-    @staticmethod
-    def build_nl2sql_prompt(...)
-    @staticmethod
-    def build_data_analysis_prompt(...)
-    @staticmethod
-    def build_multi_source_prompt(...)
-```
-
-## 二次开发指南
-
-### 添加新的数据源
-
-#### 步骤 1：创建数据源类
-
-在 `src/datasources/` 目录下创建新文件：
-
-```python
-from .base import DataSource
-from typing import Any, Dict, Optional
-
-class MyDataSource(DataSource):
-    """自定义数据源"""
-    
-    def __init__(self, name: str, **kwargs):
-        super().__init__(name, "my_type")
-        # 初始化参数
-    
-    def connect(self) -> bool:
-        """连接数据源"""
-        try:
-            # 实现连接逻辑
+            import pymysql
+            self.connection = pymysql.connect(
+                host=self.host,
+                database=self.database,
+                # ...
+            )
             return True
         except Exception as e:
             logger.error(f"连接失败: {e}")
             return False
     
-    def query(self, query: str, **kwargs) -> Dict[str, Any]:
-        """查询数据"""
+    def query(self, query: str, **kwargs) -> QueryResponse:
+        start_time = time.time()
         try:
-            # 实现查询逻辑
-            return {
-                "success": True,
-                "data": ...,
-                "error": None,
-                "metadata": {}
-            }
+            cursor = self.connection.cursor()
+            cursor.execute(query)
+            data = cursor.fetchall()
+            
+            return QueryResponse(
+                success=True,
+                data=data,
+                metadata=QueryMetadata(
+                    row_count=len(data),
+                    execution_time=time.time() - start_time,
+                    data_source_type="mysql",
+                ),
+            )
         except Exception as e:
-            return {
-                "success": False,
-                "data": None,
-                "error": str(e),
-                "metadata": {}
-            }
-    
-    def get_schema(self) -> Optional[str]:
-        """获取schema"""
-        # 返回数据源的结构描述
-        return "数据源结构信息"
-    
-    def close(self):
-        """关闭连接"""
-        pass
-```
-
-#### 步骤 2：注册到 Agent
-
-在 `src/agent.py` 中添加注册方法：
-
-```python
-def register_my_datasource(self, name: str, **kwargs) -> bool:
-    """注册自定义数据源"""
-    try:
-        my_source = MyDataSource(name, **kwargs)
-        if my_source.connect():
-            self.analyzer.register_data_source(name, my_source)
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"注册失败: {e}")
-        return False
-```
-
-#### 步骤 3：添加到分析器
-
-在 `src/analyzers/data_analyzer.py` 的 `analyze_single_source` 方法中添加处理逻辑：
-
-```python
-def analyze_single_source(self, question: str, source_name: str, **kwargs):
-    data_source = self.data_sources[source_name]
-    
-    if isinstance(data_source, MyDataSource):
-        return self._analyze_my_datasource(question, data_source, **kwargs)
-    # ... 其他类型
-```
-
-#### 步骤 4：更新 UI
-
-在 `web_ui.py` 中添加注册界面和按钮。
-
-### 自定义 Prompt
-
-#### 修改现有 Prompt
-
-编辑 `config/prompts.py`：
-
-```python
-class PromptTemplates:
-    # 修改现有模板
-    NL2SQL_TEMPLATE = """
-    你的自定义 Prompt...
-    
-    数据库信息：
-    {database_schema}
-    
-    用户问题：{question}
-    """
-```
-
-#### 添加新 Prompt
-
-```python
-class PromptTemplates:
-    # 添加新模板
-    MY_CUSTOM_TEMPLATE = """
-    你的自定义任务 Prompt...
-    
-    输入：{input}
-    要求：{requirements}
-    """
-
-class PromptBuilder:
-    @staticmethod
-    def build_my_custom_prompt(input_data: str, requirements: str) -> str:
-        return PromptTemplates.MY_CUSTOM_TEMPLATE.format(
-            input=input_data,
-            requirements=requirements,
-        )
-```
-
-### 扩展分析功能
-
-#### 添加新的分析类型
-
-在 `src/analyzers/` 创建新分析器：
-
-```python
-class CustomAnalyzer:
-    """自定义分析器"""
-    
-    def __init__(self):
-        self.llm = get_llm()
-    
-    def analyze(self, data: Any, question: str) -> Dict[str, Any]:
-        """执行分析"""
-        # 构建 Prompt
-        prompt = self._build_prompt(data, question)
-        
-        # 记录日志
-        logger.info("=" * 70)
-        logger.info("📝 [LLM调用] 自定义分析")
-        logger.info("=" * 70)
-        logger.info(f"输入Prompt:\n{prompt}")
-        logger.info("=" * 70)
-        
-        # 调用 LLM
-        response = self.llm.complete(prompt)
-        answer = str(response)
-        
-        logger.info(f"LLM响应:\n{answer}")
-        logger.info("=" * 70)
-        
-        return {
-            "success": True,
-            "answer": answer,
-            "error": None,
-        }
-```
-
-### 自定义 UI 组件
-
-修改 `web_ui.py` 添加新的界面元素：
-
-```python
-def create_ui():
-    with gr.Blocks(...) as demo:
-        # 添加新的 Tab
-        with gr.Tab("🆕 新功能"):
-            gr.Markdown("### 自定义功能")
-            
-            # 添加输入组件
-            input_field = gr.Textbox(label="输入")
-            output_field = gr.Markdown()
-            
-            # 添加按钮
-            submit_btn = gr.Button("提交")
-            
-            # 绑定事件
-            submit_btn.click(
-                fn=your_function,
-                inputs=input_field,
-                outputs=output_field
+            return QueryResponse(
+                success=False,
+                error=str(e),
+                metadata=QueryMetadata(
+                    row_count=0,
+                    execution_time=time.time() - start_time,
+                    data_source_type="mysql",
+                ),
             )
 ```
 
-### 集成新的 LLM
+2. **注册到 Agent**
 
-#### 方式 1：OpenAI 兼容 API
+```python
+# src/agent.py
+def register_mysql_database(self, name: str, host: str, database: str):
+    from .datasources.mysql_source import MySQLDataSource
+    source = MySQLDataSource(name, host, database)
+    if source.connect():
+        self.analyzer.register_data_source(name, source)
+        return True
+    return False
+```
 
-如果新 LLM 兼容 OpenAI API 格式，只需配置 `.env`：
+### 自定义分析器
+
+```python
+# src/analyzers/custom_analyzer.py
+class CustomAnalyzer:
+    def analyze(self, data, question: str):
+        # 自定义分析逻辑
+        insights = []
+        # ... 分析代码
+        return {
+            "summary": "...",
+            "insights": insights,
+        }
+```
+
+### 扩展 Prompt 模板
+
+```python
+# config/prompts.py
+class CustomPromptTemplates:
+    CUSTOM_ANALYSIS = """
+    你是数据分析专家，请分析以下数据：
+    
+    数据: {data}
+    问题: {question}
+    
+    请给出详细分析。
+    """
+```
+
+### 添加新的图表类型
+
+1. **扩展枚举**
+
+```python
+# src/models/analysis.py
+class VisualizationType(str, Enum):
+    # ... 现有类型
+    CUSTOM = "custom"  # 新增类型
+```
+
+2. **实现渲染逻辑**
+
+```python
+# src/analyzers/data_analyzer.py
+def create_custom_chart(self, data, config):
+    import plotly.graph_objects as go
+    
+    fig = go.Figure()
+    # ... 自定义图表逻辑
+    
+    return fig
+```
+
+## 数据模型
+
+### 配置模型
+
+```python
+from src.models.config import (
+    SystemSettings,    # 系统配置
+    LLMConfig,        # LLM 配置
+    EmbeddingConfig,  # Embedding 配置
+)
+
+# 自动验证和类型转换
+settings = SystemSettings()
+llm_config = settings.get_llm_config()
+```
+
+### 数据源模型
+
+```python
+from src.models.datasource import (
+    DataSourceConfig,   # 基础配置
+    SQLiteConfig,       # SQLite 配置
+    FileConfig,         # 文件配置
+    QueryRequest,       # 查询请求
+    QueryResponse,      # 查询响应
+    QueryMetadata,      # 元数据
+)
+```
+
+### 分析模型
+
+```python
+from src.models.analysis import (
+    AnalysisRequest,    # 分析请求
+    AnalysisResponse,   # 分析响应
+    ChartConfig,        # 图表配置
+    VisualizationType,  # 图表类型
+    ChatSession,        # 会话管理
+)
+```
+
+详细说明见 [Pydantic 数据验证指南](PYDANTIC_GUIDE.md)
+
+## 最佳实践
+
+### 1. 使用 Pydantic 模型
+
+✅ **推荐**
+```python
+from src.models.datasource import QueryResponse
+
+def query_data(sql: str) -> QueryResponse:
+    # 返回验证过的模型
+    return QueryResponse(
+        success=True,
+        data=[...],
+        metadata=QueryMetadata(...)
+    )
+```
+
+❌ **不推荐**
+```python
+def query_data(sql: str) -> dict:
+    # 返回原始字典，无验证
+    return {"success": True, "data": [...]}
+```
+
+### 2. 错误处理
+
+```python
+from pydantic import ValidationError
+
+try:
+    config = LLMConfig(
+        api_key="key",
+        temperature=3.0,  # 超出范围
+    )
+except ValidationError as e:
+    logger.error(f"配置验证失败: {e}")
+    for error in e.errors():
+        print(f"字段: {error['loc']}, 错误: {error['msg']}")
+```
+
+### 3. 日志记录
+
+```python
+from loguru import logger
+
+logger.info("开始查询")
+logger.debug(f"SQL: {sql}")
+logger.error(f"查询失败: {e}")
+logger.warning("数据为空")
+```
+
+### 4. 资源管理
+
+```python
+# 使用上下文管理器
+with datasource:
+    result = datasource.query("SELECT * FROM users")
+```
+
+### 5. 配置管理
+
+```python
+# 统一使用 settings 实例
+from config.settings import settings
+
+# 访问配置
+api_key = settings.llm_api_key
+temperature = settings.temperature
+
+# 确保目录存在
+settings.ensure_directories()
+```
+
+## 开发工具
+
+### 运行测试
 
 ```bash
-LLM_API_KEY=your-key
+# 单元测试（待添加）
+pytest tests/
+
+# 运行示例
+python examples/pydantic_usage.py
+```
+
+### 代码检查
+
+```bash
+# 类型检查
+mypy src/
+
+# 代码格式化
+black src/
+```
+
+### 调试
+
+```python
+# 在代码中添加断点
+import pdb; pdb.set_trace()
+
+# 或使用 IDE 断点调试
+```
+
+## API 参考
+
+### Agent API
+
+```python
+agent = DataAnalystAgent(max_history_turns=10)
+
+# 注册数据源
+agent.register_sqlite_database(name, db_path)
+agent.register_file_datasource(name, file_path)
+
+# 对话
+response = agent.chat(question, data_sources)
+
+# 清空历史
+agent.clear_history()
+```
+
+### DataSource API
+
+```python
+# 连接
+datasource.connect()
+
+# 查询
+response: QueryResponse = datasource.query(query)
+
+# 获取 Schema
+schema: str = datasource.get_schema()
+
+# 关闭
+datasource.close()
+```
+
+## 性能优化
+
+1. **缓存查询结果** - 避免重复查询
+2. **限制返回数据量** - 使用 LIMIT 子句
+3. **异步处理** - 对于长时间查询使用异步
+4. **批量操作** - 合并多个小查询
+
+## 常见问题
+
+### Q: 如何添加自定义验证？
+
+使用 Pydantic 的 `@field_validator`:
+
+```python
+from pydantic import BaseModel, field_validator
+
+class CustomConfig(BaseModel):
+    value: int
+    
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v):
+        if v < 0:
+            raise ValueError("值必须大于 0")
+        return v
+```
+
+### Q: 如何支持新的 LLM?
+
+只需配置兼容 OpenAI API 的 endpoint：
+
+```bash
 LLM_API_BASE=https://your-llm-endpoint/v1
 LLM_MODEL=your-model-name
 ```
 
-#### 方式 2：自定义 LLM 类
+### Q: 如何调试 SQL 生成？
 
-在 `config/llm_config.py` 中添加：
+查看日志文件 `logs/` 中的详细 SQL 语句。
 
-```python
-def get_llm(...):
-    provider = os.getenv("LLM_PROVIDER", "openai")
-    
-    if provider == "my_llm":
-        from llama_index.llms.my_llm import MyLLM
-        return MyLLM(
-            api_key=api_key,
-            model=model,
-            # ... 其他参数
-        )
-```
+## 📚 参考资源
 
-## 调试技巧
+- [Pydantic 文档](https://docs.pydantic.dev/)
+- [LlamaIndex 文档](https://docs.llamaindex.ai/)
+- [Gradio 文档](https://www.gradio.app/docs/)
+- [Plotly 文档](https://plotly.com/python/)
 
-### 1. 查看日志
-
-所有 LLM 调用都会记录 Prompt 和响应：
-
-```bash
-tail -f logs/ai_data_analyst_$(date +%Y-%m-%d).log
-```
-
-### 2. 断点调试
-
-使用 Python 调试器：
-
-```python
-import pdb; pdb.set_trace()
-```
-
-或使用 IDE 的调试功能。
-
-### 3. 测试单个模块
-
-创建测试脚本：
-
-```python
-from src.datasources import SQLiteDataSource
-
-# 测试数据源
-db = SQLiteDataSource("test", "data/databases/test.db")
-db.connect()
-result = db.query("SELECT * FROM users LIMIT 10")
-print(result)
-```
-
-### 4. Prompt 优化
-
-1. 查看日志中的 Prompt
-2. 复制到 LLM playground 测试
-3. 调整 Prompt 模板
-4. 重新测试
-
-## 性能优化
-
-### 1. 缓存机制
-
-实现查询结果缓存：
-
-```python
-from functools import lru_cache
-
-@lru_cache(maxsize=100)
-def cached_query(query: str) -> Dict:
-    # 执行查询
-    pass
-```
-
-### 2. 并发处理
-
-使用异步或多线程处理多个请求：
-
-```python
-import asyncio
-
-async def process_multiple_queries(queries: List[str]):
-    tasks = [process_query(q) for q in queries]
-    return await asyncio.gather(*tasks)
-```
-
-### 3. 数据库优化
-
-- 为常用查询字段添加索引
-- 使用查询计划分析
-- 限制返回数据量
-
-### 4. LLM 调用优化
-
-- 使用更快的模型
-- 批处理相似请求
-- 实现请求去重
-
-## 测试
-
-### 单元测试
-
-创建 `tests/` 目录并添加测试：
-
-```python
-import unittest
-from src.datasources import SQLiteDataSource
-
-class TestSQLiteDataSource(unittest.TestCase):
-    def setUp(self):
-        self.db = SQLiteDataSource("test", ":memory:")
-        self.db.connect()
-    
-    def test_query(self):
-        result = self.db.query("SELECT 1")
-        self.assertTrue(result["success"])
-    
-    def tearDown(self):
-        self.db.close()
-```
-
-运行测试：
-
-```bash
-python -m unittest discover tests/
-```
-
-### 集成测试
-
-测试完整流程：
-
-```python
-def test_full_workflow():
-    # 初始化 Agent
-    agent = DataAnalystAgent()
-    
-    # 注册数据源
-    agent.register_sqlite_database("test", "test.db")
-    
-    # 执行查询
-    result = agent.chat("查询所有用户", source_name="test")
-    
-    # 验证结果
-    assert "SQL" in result or "数据" in result
-```
-
-## 部署
-
-### Docker 部署
-
-创建 `Dockerfile`：
-
-```dockerfile
-FROM python:3.9
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-
-CMD ["python", "web_ui.py"]
-```
-
-构建和运行：
-
-```bash
-docker build -t ai-data-analyst .
-docker run -p 7860:7860 ai-data-analyst
-```
-
-### 生产环境配置
-
-1. 使用 Gunicorn 或 uWSGI
-2. 配置反向代理（Nginx）
-3. 设置环境变量
-4. 启用 HTTPS
-5. 配置日志轮转
-6. 监控和告警
-
-## 贡献指南
-
-### 提交代码
+## 🤝 贡献指南
 
 1. Fork 项目
-2. 创建特性分支：`git checkout -b feature/new-feature`
-3. 提交更改：`git commit -am 'Add new feature'`
-4. 推送分支：`git push origin feature/new-feature`
-5. 创建 Pull Request
-
-### 代码规范
-
-- 遵循 PEP 8
-- 添加类型注解
-- 编写文档字符串
-- 添加必要的注释
-- 编写单元测试
-
-### 文档更新
-
-修改功能后同步更新：
-- README.md
-- FEATURES.md
-- USER_GUIDE.md
-- DEVELOPER_GUIDE.md
-
-## 常见问题
-
-### Q: 如何支持新的 SQL 方言？
-
-修改 `src/tools/nl2sql.py`，添加方言特定的处理逻辑。
-
-### Q: 如何优化大数据集的处理？
-
-1. 实现分页查询
-2. 添加数据采样
-3. 使用流式处理
-4. 优化 SQL 查询
-
-### Q: 如何添加用户认证？
-
-在 `web_ui.py` 中集成 Gradio 的认证功能：
-
-```python
-demo.launch(auth=("username", "password"))
-```
-
-## 参考资源
-
-- [LlamaIndex 文档](https://docs.llamaindex.ai/)
-- [Gradio 文档](https://gradio.app/docs/)
-- [Loguru 文档](https://loguru.readthedocs.io/)
-- [Pandas 文档](https://pandas.pydata.org/docs/)
-
-## 联系方式
-
-- GitHub Issues
-- Email: [your-email]
-- 文档反馈：提交 PR
-
----
-
-祝开发愉快！🚀
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some feature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request

@@ -1,14 +1,16 @@
 """
-文件数据源适配器
+文件数据源适配器 (使用 Pydantic 模型)
 支持 CSV, Excel, JSON 等格式
 """
 
 from pathlib import Path
 from typing import Any, Dict, Optional
+import time
 import pandas as pd
 from loguru import logger
 
 from .base import DataSource
+from src.models.datasource import QueryResponse, QueryMetadata
 
 
 class FileDataSource(DataSource):
@@ -74,9 +76,9 @@ class FileDataSource(DataSource):
             logger.error(f"❌ 加载文件失败: {e}")
             return False
     
-    def query(self, query: str, **kwargs) -> Dict[str, Any]:
+    def query(self, query: str, **kwargs) -> QueryResponse:
         """
-        查询数据
+        查询数据 (返回 Pydantic 验证的结果)
         
         Args:
             query: 查询描述（可以是pandas query语法或自然语言描述）
@@ -85,18 +87,26 @@ class FileDataSource(DataSource):
                 - columns: 指定返回列
             
         Returns:
-            查询结果
+            QueryResponse: Pydantic 验证的查询结果
         """
+        start_time = time.time()
+        
         if self.data is None:
-            return {
-                "success": False,
-                "data": None,
-                "error": "文件未加载",
-                "metadata": {}
-            }
+            return QueryResponse(
+                success=False,
+                data=None,
+                error="文件未加载",
+                metadata=QueryMetadata(
+                    row_count=0,
+                    execution_time=0.0,
+                    data_source_type="file",
+                    columns=[],
+                )
+            )
         
         try:
             result_df = self.data.copy()
+            warnings = []
             
             # 尝试作为pandas query执行
             try:
@@ -106,6 +116,7 @@ class FileDataSource(DataSource):
             except Exception as e:
                 # 如果不是有效的pandas query，返回全部数据
                 logger.debug(f"Query不是有效的pandas表达式，返回全部数据: {e}")
+                warnings.append(f"Query不是有效的pandas表达式: {str(e)}")
             
             # 应用列筛选
             if 'columns' in kwargs and kwargs['columns']:
@@ -121,30 +132,42 @@ class FileDataSource(DataSource):
             
             # 转换为字典列表
             data = result_df.to_dict('records')
+            execution_time = time.time() - start_time
             
             logger.info(f"✅ 查询成功，返回 {len(data)} 条记录")
             
-            return {
-                "success": True,
-                "data": data,
-                "error": None,
-                "metadata": {
-                    "row_count": len(data),
-                    "columns": list(result_df.columns),
-                    "total_rows": len(self.data),
-                    "file_format": self.file_format,
-                }
-            }
+            return QueryResponse(
+                success=True,
+                data=data,
+                error=None,
+                metadata=QueryMetadata(
+                    row_count=len(data),
+                    total_rows=len(self.data),
+                    columns=list(result_df.columns),
+                    execution_time=execution_time,
+                    data_source_type="file",
+                    file_format=self.file_format,
+                    file_size=self.file_path.stat().st_size if self.file_path.exists() else None,
+                ),
+                warnings=warnings,
+            )
             
         except Exception as e:
             error_msg = f"查询失败: {str(e)}"
             logger.error(f"❌ {error_msg}")
-            return {
-                "success": False,
-                "data": None,
-                "error": error_msg,
-                "metadata": {}
-            }
+            execution_time = time.time() - start_time
+            
+            return QueryResponse(
+                success=False,
+                data=None,
+                error=error_msg,
+                metadata=QueryMetadata(
+                    row_count=0,
+                    columns=[],
+                    execution_time=execution_time,
+                    data_source_type="file",
+                ),
+            )
     
     def get_schema(self) -> Optional[str]:
         """

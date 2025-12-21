@@ -1,9 +1,10 @@
 """
-数据源基类
+数据源基类 (使用 Pydantic 模型)
 """
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
+from src.models.datasource import QueryResponse
 
 
 class DataSource(ABC):
@@ -31,20 +32,16 @@ class DataSource(ABC):
         pass
     
     @abstractmethod
-    def query(self, query: str, **kwargs) -> Dict[str, Any]:
+    def query(self, query: str, **kwargs) -> QueryResponse:
         """
-        查询数据
+        查询数据 (返回 Pydantic 模型)
         
         Args:
             query: 查询语句或问题
             **kwargs: 额外参数
             
         Returns:
-            查询结果字典，包含：
-            - success: bool, 是否成功
-            - data: 查询到的数据
-            - error: Optional[str], 错误信息
-            - metadata: Dict, 元数据
+            QueryResponse: Pydantic 验证的查询结果
         """
         pass
     

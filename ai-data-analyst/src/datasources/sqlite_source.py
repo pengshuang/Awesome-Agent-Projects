@@ -1,13 +1,15 @@
 """
-SQLite 数据源适配器
+SQLite 数据源适配器 (使用 Pydantic 模型)
 """
 
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, List
 from loguru import logger
 
 from .base import DataSource
+from src.models.datasource import QueryResponse, QueryMetadata
 
 
 class SQLiteDataSource(DataSource):
@@ -38,30 +40,38 @@ class SQLiteDataSource(DataSource):
             logger.error(f"❌ 连接数据库失败: {e}")
             return False
     
-    def query(self, query: str, **kwargs) -> Dict[str, Any]:
+    def query(self, query: str, **kwargs) -> QueryResponse:
         """
-        执行SQL查询
+        执行SQL查询 (返回 Pydantic 验证的结果)
         
         Args:
             query: SQL查询语句
             **kwargs: 额外参数
             
         Returns:
-            查询结果
+            QueryResponse: Pydantic 验证的查询结果
         """
+        start_time = time.time()
+        
         if not self.connection:
-            return {
-                "success": False,
-                "data": None,
-                "error": "数据库未连接",
-                "metadata": {}
-            }
+            return QueryResponse(
+                success=False,
+                data=None,
+                error="数据库未连接",
+                metadata=QueryMetadata(
+                    row_count=0,
+                    execution_time=0.0,
+                    data_source_type="sqlite",
+                    columns=[],
+                )
+            )
         
         try:
             # 清理查询语句
             query = query.strip()
             
             # 如果包含多条语句（用分号分隔），只执行第一条 SELECT 语句
+            warnings = []
             if ';' in query:
                 statements = [s.strip() for s in query.split(';') if s.strip()]
                 # 找到第一条 SELECT 语句
@@ -73,17 +83,18 @@ class SQLiteDataSource(DataSource):
                 
                 if select_statement:
                     query = select_statement
-                    logger.warning(f"⚠️ 检测到多条SQL语句，只执行第一条 SELECT 语句")
+                    warnings.append("检测到多条SQL语句，只执行第一条 SELECT 语句")
                 else:
                     # 如果没有 SELECT，使用第一条语句
                     query = statements[0]
-                    logger.warning(f"⚠️ 检测到多条SQL语句，只执行第一条语句")
+                    warnings.append("检测到多条SQL语句，只执行第一条语句")
             
             # 记录查询日志
             logger.info(f"📊 执行SQL查询:\n{query}")
             
             # 执行查询
             self.cursor.execute(query)
+            execution_time = time.time() - start_time
             
             # 判断是否是查询操作
             if query.strip().upper().startswith('SELECT'):
@@ -92,18 +103,23 @@ class SQLiteDataSource(DataSource):
                 
                 # 转换为字典列表
                 data = [dict(row) for row in rows]
+                columns = [desc[0] for desc in self.cursor.description] if self.cursor.description else []
                 
                 logger.info(f"✅ 查询成功，返回 {len(data)} 条记录")
                 
-                return {
-                    "success": True,
-                    "data": data,
-                    "error": None,
-                    "metadata": {
-                        "row_count": len(data),
-                        "columns": [desc[0] for desc in self.cursor.description] if self.cursor.description else []
-                    }
-                }
+                return QueryResponse(
+                    success=True,
+                    data=data,
+                    error=None,
+                    metadata=QueryMetadata(
+                        row_count=len(data),
+                        columns=columns,
+                        execution_time=execution_time,
+                        data_source_type="sqlite",
+                        sql_query=query,
+                    ),
+                    warnings=warnings,
+                )
             else:
                 # 非查询操作（INSERT, UPDATE, DELETE等）
                 self.connection.commit()
@@ -111,24 +127,37 @@ class SQLiteDataSource(DataSource):
                 
                 logger.info(f"✅ 操作成功，影响 {affected_rows} 行")
                 
-                return {
-                    "success": True,
-                    "data": None,
-                    "error": None,
-                    "metadata": {
-                        "affected_rows": affected_rows
-                    }
-                }
+                return QueryResponse(
+                    success=True,
+                    data=None,
+                    error=None,
+                    metadata=QueryMetadata(
+                        row_count=affected_rows,
+                        columns=[],
+                        execution_time=execution_time,
+                        data_source_type="sqlite",
+                        sql_query=query,
+                    ),
+                    warnings=warnings,
+                )
                 
         except sqlite3.Error as e:
             error_msg = f"SQL执行错误: {str(e)}"
             logger.error(f"❌ {error_msg}")
-            return {
-                "success": False,
-                "data": None,
-                "error": error_msg,
-                "metadata": {}
-            }
+            execution_time = time.time() - start_time
+            
+            return QueryResponse(
+                success=False,
+                data=None,
+                error=error_msg,
+                metadata=QueryMetadata(
+                    row_count=0,
+                    columns=[],
+                    execution_time=execution_time,
+                    data_source_type="sqlite",
+                    sql_query=query,
+                ),
+            )
     
     def get_schema(self) -> Optional[str]:
         """

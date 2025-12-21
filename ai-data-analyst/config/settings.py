@@ -1,64 +1,64 @@
 """
-系统配置模块
+系统配置模块 (使用 Pydantic 进行数据验证)
 """
 
 import os
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
 
+# 加载环境变量
+load_dotenv()
 
+# 导入 Pydantic 配置模型
+from src.models.config import SystemSettings
+
+# 创建全局配置实例
+settings = SystemSettings()
+
+# 向后兼容的配置类
 class SystemConfig:
-    """系统配置类"""
+    """系统配置类 (向后兼容层)"""
     
     # 项目根目录
-    PROJECT_ROOT = Path(__file__).parent.parent
+    PROJECT_ROOT = settings.project_root
     
     # 数据目录
-    DATA_DIR = PROJECT_ROOT / "data"
-    DATABASE_DIR = DATA_DIR / "databases"
-    FILES_DIR = DATA_DIR / "files"
-    KNOWLEDGE_BASE_DIR = DATA_DIR / "knowledge_base"
-    CACHE_DIR = DATA_DIR / "cache"
+    DATA_DIR = settings.data_dir
+    DATABASE_DIR = settings.database_dir
+    FILES_DIR = settings.files_dir
+    KNOWLEDGE_BASE_DIR = settings.knowledge_base_dir
+    CACHE_DIR = settings.cache_dir
     
     # 日志目录
-    LOG_DIR = PROJECT_ROOT / "logs"
+    LOG_DIR = settings.log_dir
     
     # 输出目录
-    OUTPUT_DIR = PROJECT_ROOT / "output"
-    CHAT_HISTORY_DIR = OUTPUT_DIR / "chat_history"
+    OUTPUT_DIR = settings.output_dir
+    CHAT_HISTORY_DIR = settings.chat_history_dir
     
     # LLM 配置
-    LLM_API_KEY: Optional[str] = os.getenv("LLM_API_KEY")
-    LLM_API_BASE: str = os.getenv("LLM_API_BASE", "https://api.openai.com/v1")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
-    TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.1"))
+    LLM_API_KEY: Optional[str] = settings.llm_api_key
+    LLM_API_BASE: str = settings.llm_api_base
+    LLM_MODEL: str = settings.llm_model
+    TEMPERATURE: float = settings.temperature
     
     # Embedding 配置
-    EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "huggingface")
-    EMBEDDING_MODEL_NAME: str = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-small-zh-v1.5")
-    EMBEDDING_API_KEY: Optional[str] = os.getenv("EMBEDDING_API_KEY")
+    EMBEDDING_PROVIDER: str = settings.embedding_provider
+    EMBEDDING_MODEL_NAME: str = settings.embedding_model_name
+    EMBEDDING_API_KEY: Optional[str] = settings.embedding_api_key
     
     # 多轮对话配置
-    MAX_HISTORY_TURNS: int = int(os.getenv("MAX_HISTORY_TURNS", "10"))
+    MAX_HISTORY_TURNS: int = settings.max_history_turns
     
     # Web 搜索配置
-    ENABLE_WEB_SEARCH: bool = os.getenv("ENABLE_WEB_SEARCH", "false").lower() == "true"
-    WEB_SEARCH_API_KEY: Optional[str] = os.getenv("WEB_SEARCH_API_KEY")
+    ENABLE_WEB_SEARCH: bool = settings.enable_web_search
+    WEB_SEARCH_API_KEY: Optional[str] = settings.web_search_api_key
     
     # NL2SQL 配置
-    SQL_DIALECT: str = os.getenv("SQL_DIALECT", "sqlite")
+    SQL_DIALECT: str = settings.sql_dialect
     
     @classmethod
     def ensure_directories(cls):
         """确保必要的目录存在"""
-        for dir_path in [
-            cls.DATA_DIR,
-            cls.DATABASE_DIR,
-            cls.FILES_DIR,
-            cls.KNOWLEDGE_BASE_DIR,
-            cls.CACHE_DIR,
-            cls.LOG_DIR,
-            cls.OUTPUT_DIR,
-            cls.CHAT_HISTORY_DIR,
-        ]:
-            dir_path.mkdir(parents=True, exist_ok=True)
+        settings.ensure_directories()
