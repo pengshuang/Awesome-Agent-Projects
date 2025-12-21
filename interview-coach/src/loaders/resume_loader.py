@@ -107,6 +107,9 @@ class ResumeLoader:
             logger.warning(f"{WARNING_NO_CONTENT}: {file_path}")
             raise EmptyResumeError()
         
+        # 延迟导入避免循环依赖
+        from src.models.resume import ResumeData, ResumeMetadata
+        
         # 构建元数据
         elapsed_time = time.time() - start_time
         metadata = ResumeMetadata(
@@ -120,9 +123,6 @@ class ResumeLoader:
         self.metadata = metadata
         
         logger.info(f"{SUCCESS_RESUME_LOADED} | 耗时: {elapsed_time:.2f}秒 | 长度: {len(self.resume_content)}")
-        
-        # 延迟导入避免循环依赖
-        from src.models.resume import ResumeData
         
         return ResumeData(
             content=self.resume_content,

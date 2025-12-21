@@ -10,6 +10,7 @@ from openai import OpenAI
 from loguru import logger
 
 from config import get_llm_client, SystemConfig
+from config.settings import get_config
 from config.prompts import PromptManager
 from src.constants import (
     SUCCESS_INTERVIEW_STARTED,
@@ -52,8 +53,14 @@ class InterviewAgent:
         self.max_history_turns = max_history_turns
         self.enable_web_search = enable_web_search
         
-        # 获取 LLM 客户端
-        self.client, self.model, self.temperature = get_llm_client()
+        # 获取配置和 LLM 客户端
+        config = get_config()
+        self.client, self.model, self.temperature = get_llm_client(
+            api_key=config.llm_api_key,
+            api_base=config.llm_api_base,
+            model=config.llm_model,
+            temperature=config.llm_temperature
+        )
         
         # 对话历史
         self.chat_history: List[Dict[str, str]] = []

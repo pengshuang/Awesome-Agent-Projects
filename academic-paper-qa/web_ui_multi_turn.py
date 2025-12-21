@@ -479,21 +479,26 @@ def main():
                     """处理用户输入"""
                     if not message or not message.strip():
                         return "", history
-                    return "", history + [[message, None]]
+                    return "", history + [{"role": "user", "content": message}]
                 
                 def bot_rag(history, enable_web, top_k, use_history):
                     """处理机器人回复"""
-                    if not history or history[-1][1] is not None:
+                    if not history or (history[-1].get("role") != "user"):
                         return history
                     
-                    user_msg = history[-1][0]
-                    # 转换历史格式供 chat_rag 使用
-                    chat_history = [[h[0], h[1]] for h in history[:-1] if h[1] is not None]
+                    user_msg = history[-1]["content"]
+                    # 转换历史格式供 chat_rag 使用（提取成对的消息）
+                    chat_history = []
+                    for i in range(0, len(history) - 1, 2):
+                        if i + 1 < len(history) and history[i].get("role") == "user" and history[i+1].get("role") == "assistant":
+                            chat_history.append([history[i]["content"], history[i+1]["content"]])
                     
-                    # 调用 chat_rag 获取回复
-                    response = chat_rag(user_msg, chat_history, enable_web, top_k, use_history)
-                    history[-1][1] = response
-                    return history
+                    # 调用 chat_rag 获取回复（消费生成器获取最终结果）
+                    response_gen = chat_rag(user_msg, chat_history, enable_web, top_k, use_history)
+                    response = ""
+                    for chunk in response_gen:
+                        response = chunk  # 获取最后一个 yield 的值
+                    return history + [{"role": "assistant", "content": response}]
                 
                 submit_rag.click(
                     user_rag, 
@@ -585,21 +590,26 @@ def main():
                     """处理用户输入"""
                     if not message or not message.strip():
                         return "", history
-                    return "", history + [[message, None]]
+                    return "", history + [{"role": "user", "content": message}]
                 
                 def bot_direct(history, enable_web, docs):
                     """处理机器人回复"""
-                    if not history or history[-1][1] is not None:
+                    if not history or (history[-1].get("role") != "user"):
                         return history
                     
-                    user_msg = history[-1][0]
-                    # 转换历史格式供 chat_direct 使用
-                    chat_history = [[h[0], h[1]] for h in history[:-1] if h[1] is not None]
+                    user_msg = history[-1]["content"]
+                    # 转换历史格式供 chat_direct 使用（提取成对的消息）
+                    chat_history = []
+                    for i in range(0, len(history) - 1, 2):
+                        if i + 1 < len(history) and history[i].get("role") == "user" and history[i+1].get("role") == "assistant":
+                            chat_history.append([history[i]["content"], history[i+1]["content"]])
                     
-                    # 调用 chat_direct 获取回复
-                    response = chat_direct(user_msg, chat_history, enable_web, docs)
-                    history[-1][1] = response
-                    return history
+                    # 调用 chat_direct 获取回复（消费生成器获取最终结果）
+                    response_gen = chat_direct(user_msg, chat_history, enable_web, docs)
+                    response = ""
+                    for chunk in response_gen:
+                        response = chunk  # 获取最后一个 yield 的值
+                    return history + [{"role": "assistant", "content": response}]
                 
                 submit_direct.click(
                     user_direct, 

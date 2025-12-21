@@ -32,7 +32,14 @@ class ResumeEvaluator:
         初始化简历评估器
         """
         # 获取 LLM 客户端
-        self.client, self.model, self.temperature = get_llm_client()
+        from config.settings import get_config
+        config = get_config()
+        self.client, self.model, self.temperature = get_llm_client(
+            api_key=config.llm_api_key,
+            api_base=config.llm_api_base,
+            model=config.llm_model,
+            temperature=config.temperature,
+        )
         
         logger.info("简历评估器已初始化")
     

@@ -31,7 +31,12 @@ class SQLiteDataSource(DataSource):
     def connect(self) -> bool:
         """连接数据库"""
         try:
-            self.connection = sqlite3.connect(str(self.db_path))
+            # check_same_thread=False 允许在不同线程中使用连接
+            # 注意：这在单线程或使用适当锁的情况下是安全的
+            self.connection = sqlite3.connect(
+                str(self.db_path), 
+                check_same_thread=False
+            )
             self.connection.row_factory = sqlite3.Row  # 返回字典格式的结果
             self.cursor = self.connection.cursor()
             logger.info(f"✅ 已连接到SQLite数据库: {self.db_path}")

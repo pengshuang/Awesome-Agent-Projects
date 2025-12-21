@@ -134,12 +134,12 @@ class DataAnalyzer:
         # 执行SQL查询
         query_result = db_source.query(sql)
         
-        if not query_result["success"]:
+        if not query_result.success:
             # 尝试修正SQL
             logger.warning("SQL执行失败，尝试修正...")
             correction_result = self.nl2sql.correct_sql(
                 sql=sql,
-                error=query_result["error"],
+                error=query_result.error,
                 database_schema=schema,
             )
             
@@ -147,16 +147,16 @@ class DataAnalyzer:
                 sql = correction_result["sql"]
                 query_result = db_source.query(sql)
         
-        if not query_result["success"]:
+        if not query_result.success:
             return {
                 "success": False,
                 "answer": None,
-                "error": query_result["error"],
+                "error": query_result.error,
                 "sql": sql,
             }
         
         # 使用LLM分析查询结果
-        data_str = format_data_for_display(query_result["data"])
+        data_str = format_data_for_display(query_result.data)
         
         analysis_prompt = PromptTemplates.DATA_ANALYSIS_TEMPLATE.format(
             data_source=f"数据库: {db_source.name}",
@@ -182,8 +182,8 @@ class DataAnalyzer:
             "answer": answer,
             "error": None,
             "sql": sql,
-            "data": query_result["data"],
-            "metadata": query_result["metadata"],
+            "data": query_result.data,
+            "metadata": query_result.metadata,
         }
     
     def _analyze_file(
@@ -196,15 +196,15 @@ class DataAnalyzer:
         # 查询文件数据
         query_result = file_source.query("", limit=100)
         
-        if not query_result["success"]:
+        if not query_result.success:
             return {
                 "success": False,
                 "answer": None,
-                "error": query_result["error"],
+                "error": query_result.error,
             }
         
         # 格式化数据
-        data_str = format_data_for_display(query_result["data"])
+        data_str = format_data_for_display(query_result.data)
         
         # 使用LLM分析
         analysis_prompt = PromptTemplates.DATA_ANALYSIS_TEMPLATE.format(
@@ -230,8 +230,8 @@ class DataAnalyzer:
             "success": True,
             "answer": answer,
             "error": None,
-            "data": query_result["data"],
-            "metadata": query_result["metadata"],
+            "data": query_result.data,
+            "metadata": query_result.metadata,
         }
     
     def _analyze_knowledge_base(

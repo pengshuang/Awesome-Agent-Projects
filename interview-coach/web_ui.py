@@ -69,18 +69,18 @@ def upload_resume(file) -> str:
         
         # 加载简历
         result = resume_loader.load_resume(file.name)
-        current_resume_content = result["content"]
-        current_resume_metadata = result["metadata"]
+        current_resume_content = result.content
+        current_resume_metadata = result.metadata
         
         # 生成状态信息（Markdown 格式）
         status = f"""## ✅ 简历加载成功！
 
 | 项目 | 信息 |
 |------|------|
-| 📄 文件名 | {current_resume_metadata['file_name']} |
-| 📏 文件大小 | {current_resume_metadata['file_size'] / 1024:.2f} KB |
-| 📝 内容长度 | {current_resume_metadata['content_length']} 字符 |
-| ⏱️ 加载耗时 | {current_resume_metadata['load_time']:.2f}秒 |
+| 📄 文件名 | {current_resume_metadata.file_name} |
+| 📏 文件大小 | {current_resume_metadata.file_size / 1024:.2f} KB |
+| 📝 内容长度 | {current_resume_metadata.content_length} 字符 |
+| ⏱️ 加载耗时 | {current_resume_metadata.load_time:.2f}秒 |
 """
         
         logger.info("简历加载成功")
@@ -229,11 +229,18 @@ def analyze_job_position(job_input: str, question_count: int) -> str:
 4. 点击"生成面试问题"按钮
 """
         
-        # 获取 LLM 客户端
+        # 获取配置和 LLM 客户端
         from config import get_llm_client
+        from config.settings import get_config
         from config.prompts import PromptTemplates
         
-        client, model, temperature = get_llm_client()
+        config = get_config()
+        client, model, temperature = get_llm_client(
+            api_key=config.llm_api_key,
+            api_base=config.llm_api_base,
+            model=config.llm_model,
+            temperature=config.llm_temperature
+        )
         
         # 构建提示词
         prompt = PromptTemplates.JOB_ANALYSIS.format(

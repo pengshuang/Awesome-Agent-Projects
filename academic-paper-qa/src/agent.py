@@ -427,6 +427,14 @@ class AcademicAgent:
             else:
                 query_engine = self.query_engine
             
+            # 如果没有网络搜索，也打印查询内容
+            if not enable_web_search or not web_sources:
+                logger.info("\n" + "="*70)
+                logger.info("【RAG模式】输入给模型的完整查询内容:")
+                logger.info("="*70)
+                logger.info(enhanced_question)
+                logger.info("="*70 + "\n")
+            
             # 执行RAG查询
             logger.info("正在检索相关文档并生成回答...")
             response = query_engine.query(enhanced_question)
@@ -441,6 +449,20 @@ class AcademicAgent:
             source_nodes = []
             if hasattr(response, 'source_nodes'):
                 source_nodes = response.source_nodes
+                
+                # 打印检索到的文档内容
+                if source_nodes:
+                    logger.info("\n" + "="*70)
+                    logger.info(f"【RAG检索结果】检索到 {len(source_nodes)} 个相关文档片段:")
+                    logger.info("="*70)
+                    for i, node in enumerate(source_nodes, 1):
+                        score = node.score if hasattr(node, 'score') else 'N/A'
+                        file_name = node.metadata.get('file_name', 'Unknown')
+                        logger.info(f"\n[片段 {i}] 文件: {file_name} | 相似度: {score}")
+                        logger.info("-" * 70)
+                        logger.info(node.text)
+                        logger.info("-" * 70)
+                    logger.info("="*70 + "\n")
             
             logger.success(f"✓ 查询完成！耗时: {elapsed:.2f} 秒")
             
@@ -693,6 +715,17 @@ class AcademicAgent:
                     
                     logger.debug(f"发送消息到 Moonshot API，包含 {len(file_messages)} 个文件内容")
                     
+                    # 打印完整的 messages 供调试
+                    logger.info("\n" + "="*70)
+                    logger.info("【直接对话-带文件】输入给 LLM API 的完整消息:")
+                    logger.info("="*70)
+                    for i, msg in enumerate(messages):
+                        logger.info(f"[消息 {i+1}] Role: {msg['role']}")
+                        content_preview = msg['content'][:500] + "..." if len(msg['content']) > 500 else msg['content']
+                        logger.info(f"Content: {content_preview}")
+                        logger.info("-" * 70)
+                    logger.info("="*70 + "\n")
+                    
                     completion = client.chat.completions.create(
                         model=model,
                         messages=messages,
@@ -718,6 +751,16 @@ class AcademicAgent:
                         "content": prompt
                     }
                 ]
+                
+                # 打印完整的 messages 供调试
+                logger.info("\n" + "="*70)
+                logger.info("【直接对话-无文件】输入给 LLM API 的完整消息:")
+                logger.info("="*70)
+                for i, msg in enumerate(messages):
+                    logger.info(f"[消息 {i+1}] Role: {msg['role']}")
+                    logger.info(f"Content: {msg['content']}")
+                    logger.info("-" * 70)
+                logger.info("="*70 + "\n")
                 
                 completion = client.chat.completions.create(
                     model=model,

@@ -141,6 +141,9 @@ class KnowledgeBaseSource(DataSource):
             # 执行查询
             response = query_engine.query(query)
             
+            # 提取答案文本
+            answer_text = str(response) if response else "未找到相关信息"
+            
             # 提取检索到的节点
             retrieved_nodes = []
             if hasattr(response, 'source_nodes'):
@@ -156,7 +159,7 @@ class KnowledgeBaseSource(DataSource):
             return {
                 "success": True,
                 "data": {
-                    "answer": str(response),
+                    "answer": answer_text,
                     "retrieved_docs": retrieved_nodes,
                 },
                 "error": None,
