@@ -34,48 +34,7 @@ An intelligent interview assistance system based on Large Language Models (LLM) 
 
 ## 🚀 Quick Start
 
-### 1. Requirements
-```bash
-Python 3.9+
-```
-
-### 2. Installation
-
-```bash
-# Clone project
-git clone <repository-url>
-cd interview-coach
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 3. Configuration
-```bash
-# Copy configuration template
-cp .env.example .env
-
-# Edit configuration file (must configure LLM API)
-vim .env
-```
-
-Minimum configuration:
-```ini
-LLM_API_KEY=your_api_key_here
-LLM_API_BASE=https://api.openai.com/v1
-LLM_MODEL=gpt-3.5-turbo
-```
-
-### 4. Launch
-```bash
-# Web interface
-python web_ui.py
-
-# Command-line example
-python quick_start.py
-```
-
-Visit: http://127.0.0.1:7861
+See unified quick start: `../docs/QUICK_START.md`.
 
 ## 📖 User Guide
 

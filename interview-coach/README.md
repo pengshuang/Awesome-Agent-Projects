@@ -34,56 +34,10 @@
 
 ## 🚀 快速开始
 
-### 1. 环境要求
-```bash
-Python 3.9+
-```
-
-### 2. 安装
-
-### 安装步骤
-
-1. **克隆项目**（或下载源码）
-```bash
 git clone https://github.com/yourusername/interview-coach.git
-cd interview-coach
-```
-
-```bash
-# 克隆项目
 git clone <repository-url>
-cd interview-coach
 
-# 安装依赖
-pip install -r requirements.txt
-```
-
-### 3. 配置
-```bash
-# 复制配置模板
-cp .env.example .env
-
-# 编辑配置文件（必须配置 LLM API）
-vim .env
-```
-
-最少配置：
-```ini
-LLM_API_KEY=your_api_key_here
-LLM_API_BASE=https://api.openai.com/v1
-LLM_MODEL=gpt-3.5-turbo
-```
-
-### 4. 启动
-```bash
-# Web 界面
-python web_ui.py
-
-# 命令行示例
-python quick_start.py
-```
-
-访问：http://127.0.0.1:7861
+请参阅统一快速启动说明：`../docs/QUICK_START.md`。
 
 ## 📖 使用指南
 

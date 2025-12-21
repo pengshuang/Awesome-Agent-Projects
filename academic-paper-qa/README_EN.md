@@ -35,48 +35,9 @@
 ---
 
 ## 🚀 Quick Start
-
-### 1. Installation
-
-```bash
 git clone <repository-url>
-cd academic-paper-qa
-pip install -r requirements.txt
-```
 
-### 2. Configuration
-
-```bash
-cp .env.example .env
-vim .env  # Edit configuration
-```
-
-**Required Configuration:**
-```bash
-LLM_API_KEY=your-api-key          # API Key
-LLM_API_BASE=https://api.xx.com/v1  # API endpoint
-LLM_MODEL=gpt-3.5-turbo           # Model name
-```
-
-Supported: [OpenAI](https://platform.openai.com/), [DeepSeek](https://platform.deepseek.com/), [Moonshot](https://platform.moonshot.cn/)
-
-### 3. Launch
-
-**Web UI (Recommended):**
-```bash
-./start_web_multi.sh   # Multi-turn dialogue
-# Visit http://127.0.0.1:7860
-```
-
-**Command Line:**
-```bash
-./start_cli_multi.sh   # Multi-turn dialogue
-./start_cli_single.sh  # Single-turn Q&A
-```
-
-**💡 Selection Advice:**
-- 🎓 **Learning & Research** → Multi-turn dialogue mode (context memory, continuous questioning)
-- ⚡ **Quick Query** → Single-turn Q&A mode (independent questions, faster response)
+See unified quick start: `../docs/QUICK_START.md`.
 
 ---
 

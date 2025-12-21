@@ -27,31 +27,9 @@ This repository contains 3 independent Agent projects:
 ---
 
 ## Quick Start
-
-### 1. Clone Repository
-
-```bash
 git clone https://github.com/pengshuang/Awesome-Agent-Projects.git
-cd Awesome-Agent-Projects
-```
 
-### 2. Choose and Start a Project
-
-```bash
-# Navigate to project directory (using academic-paper-qa as example)
-cd academic-paper-qa
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment variables
-cp .env.example .env  # Edit .env to add API Key
-
-# Start project
-python web_ui_multi_turn.py
-```
-
-Each project has independent README documentation for detailed instructions
+See unified quick start: `docs/QUICK_START.md`.
 
 ---
 

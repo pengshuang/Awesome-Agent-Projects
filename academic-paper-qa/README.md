@@ -49,48 +49,9 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 vim .env  # 编辑配置
-```
-
-**必填配置：**
-```bash
 LLM_API_KEY=your-api-key          # API Key
-LLM_API_BASE=https://api.xx.com/v1  # API 端点
-LLM_MODEL=gpt-3.5-turbo           # 模型名称
-```
 
-支持：[OpenAI](https://platform.openai.com/)、[DeepSeek](https://platform.deepseek.com/)、[Moonshot](https://platform.moonshot.cn/)
-
-### 3. 启动
-
-**Web UI（推荐）：**
-```bash
-./start_web_multi.sh   # 多轮对话
-# 访问 http://127.0.0.1:7860
-```
-
-**命令行：**
-```bash
-./start_cli_multi.sh   # 多轮对话
-./start_cli_single.sh  # 单轮问答
-```
-
-**💡 选择建议：**
-- 🎓 **学习研究** → 多轮对话模式（记忆上下文，连续追问）
-- ⚡ **快速查询** → 单轮问答模式（独立问题，响应更快）
-
----
-
-## 💬 多轮对话 vs 单轮问答
-
-### 🎯 什么时候用多轮对话？
-
-**适合场景：**
-- 📖 **深入学习**：逐步理解复杂概念，连续追问
-- 🔍 **文献综述**：对比多篇论文，关联上下文
-- 💭 **学术讨论**：头脑风暴，深入分析
-- 🎓 **论文解读**：完整理解论文结构和内容
-
-**对话示例：**
+请参阅统一快速启动说明：`../docs/QUICK_START.md`。
 ```
 👤: 什么是 Transformer？
 🤖: Transformer 是一种基于注意力机制的神经网络架构...

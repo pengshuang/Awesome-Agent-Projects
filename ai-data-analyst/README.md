@@ -29,22 +29,7 @@
 
 ## 🚀 快速开始
 
-```bash
-# 1. 安装依赖
-pip install -r requirements.txt
-
-# 2. 配置 API Key
-cp .env.example .env
-# 编辑 .env 填入你的 LLM API Key
-
-# 3. 创建示例数据（可选）
-python data/create_example_db.py
-
-# 4. 启动 Web 界面
-python web_ui.py
-# 访问 http://localhost:7860
-```
-
+请参阅统一快速启动说明：`../docs/QUICK_START.md`。
 ## 📖 文档
 
 - [用户使用指南](docs/USER_GUIDE.md) - 面向普通用户

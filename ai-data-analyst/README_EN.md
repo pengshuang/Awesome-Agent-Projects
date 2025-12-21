@@ -44,6 +44,7 @@ python data/create_example_db.py
 python web_ui.py
 # Visit http://localhost:7860
 ```
+See unified quick start: `../docs/QUICK_START.md`.
 
 ## 📖 Documentation
 

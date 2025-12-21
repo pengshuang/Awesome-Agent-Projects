@@ -29,30 +29,7 @@
 
 ## 快速开始
 
-### 1. 克隆仓库
-
-```bash
-git clone https://github.com/pengshuang/Awesome-Agent-Projects.git
-cd Awesome-Agent-Projects
-```
-
-### 2. 选择项目并启动
-
-```bash
-# 进入项目目录（以学术论文问答为例）
-cd academic-paper-qa
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置环境变量
-cp .env.example .env  # 编辑 .env 添加 API Key
-
-# 启动项目
-python web_ui_multi_turn.py
-```
-
-每个项目都有独立的 README 文档，查看详细说明
+请参阅统一快速启动说明：`docs/QUICK_START.md`。
 
 ---
 
