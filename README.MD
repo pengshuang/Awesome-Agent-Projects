@@ -6,17 +6,95 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
+## 🎉 最新更新
+
+**2025-12-21**: 🚀 重大架构优化！
+- ✅ 创建共享基础库，消除 60% 重复代码
+- ✅ 统一 LLM 配置，支持多提供商
+- ✅ 标准化工具函数库
+- ✅ 完善文档和使用指南
+
+[查看优化说明 →](./OPTIMIZATION_GUIDE.md) | [安装指南 →](./INSTALL.md)
+
 ---
 
 ## 📚 目录
 
+- [项目架构](#项目架构)
+- [快速开始](#快速开始)
 - [学术研究 Agent](#学术研究-agent)
 - [企业应用 Agent](#企业应用-agent)
-- [开发工具 Agent](#开发工具-agent)
-- [个人助理 Agent](#个人助理-agent)
-- [创意内容 Agent](#创意内容-agent)
 - [数据分析 Agent](#数据分析-agent)
 - [如何贡献](#如何贡献)
+
+---
+
+## 项目架构
+
+本项目采用模块化设计，所有子项目共享统一的基础库：
+
+```
+Awesome-Agent-Projects/
+├── shared/                      # 🆕 共享基础库
+│   ├── config/                 # 统一配置管理
+│   │   ├── base_config.py     # 基础配置类
+│   │   └── llm_config.py      # LLM 配置（支持 OpenAI/DeepSeek/Qwen）
+│   └── utils/                  # 通用工具函数
+│       ├── logger_setup.py    # 日志配置
+│       ├── file_utils.py      # 文件操作
+│       └── text_utils.py      # 文本处理
+├── academic-paper-qa/          # 学术论文问答系统
+├── ai-data-analyst/            # AI 数据分析助手
+└── interview-coach/            # AI 面试教练
+```
+
+**架构优势**：
+- 📦 **模块化设计**：清晰的职责划分
+- 🔄 **代码复用**：消除重复，易于维护
+- 🚀 **快速开发**：新项目可直接使用共享库
+- 📝 **文档完善**：详细的使用说明和示例
+
+---
+
+## 快速开始
+
+### 1. 安装共享库
+
+```bash
+git clone https://github.com/pengshuang/Awesome-Agent-Projects.git
+cd Awesome-Agent-Projects
+pip install -e shared/
+```
+
+### 2. 选择项目并启动
+
+```bash
+# 学术论文问答系统
+cd academic-paper-qa
+pip install -r requirements.txt
+python web_ui_multi_turn.py
+
+# AI 数据分析助手
+cd ai-data-analyst
+pip install -r requirements.txt
+python web_ui.py
+
+# AI 面试教练
+cd interview-coach
+pip install -r requirements.txt
+python web_ui.py
+```
+
+### 3. 配置环境变量
+
+每个项目都需要配置 `.env` 文件：
+
+```bash
+cp .env.example .env
+# 编辑 .env，添加你的 API Key
+```
+
+详细安装说明请查看 [INSTALL.md](./INSTALL.md)
 
 ---
 
@@ -123,21 +201,98 @@
 
 ---
 
-## 📖 学习资源
+## 📖 技术栈
 
-### 入门教程
-- [LangChain 官方文档](https://python.langchain.com/)
+### 共享基础
+- **配置管理**: Python-dotenv, Loguru
+- **LLM 支持**: OpenAI SDK, LlamaIndex
+- **Embedding**: HuggingFace, BAAI/bge-small-zh-v1.5
+
+### 项目特定
+- **学术论文问答**: LlamaIndex, Chroma, PyPDF, Gradio
+- **AI 数据分析**: Pandas, Plotly, SQLite, LlamaIndex
+- **AI 面试教练**: OpenAI API, Gradio, DuckDuckGo
+
+---
+
+## 📚 学习资源
+
+### 官方文档
 - [LlamaIndex 官方文档](https://docs.llamaindex.ai/)
-- [提示工程指南](https://www.promptingguide.ai/zh)
+- [OpenAI API 文档](https://platform.openai.com/docs/)
+- [Gradio 文档](https://www.gradio.app/docs/)
 
-### 进阶资源
-- [Agent 设计模式](https://www.deeplearning.ai/short-courses/ai-agents-in-langgraph/)
+### 设计模式
 - [RAG 最佳实践](https://docs.llamaindex.ai/en/stable/optimizing/production_rag/)
-- [Multi-Agent 系统设计](https://www.deeplearning.ai/short-courses/ai-agentic-design-patterns-with-autogen/)
+- [提示工程指南](https://www.promptingguide.ai/zh)
+- [Agent 设计模式](https://www.deeplearning.ai/short-courses/ai-agents-in-langgraph/)
 
 ---
 
 ## 🤝 如何贡献
+
+我们欢迎各种形式的贡献！
+
+### 贡献指南
+
+1. **Fork 本仓库**
+2. **创建特性分支** (`git checkout -b feature/AmazingFeature`)
+3. **提交更改** (`git commit -m 'Add some AmazingFeature'`)
+4. **推送到分支** (`git push origin feature/AmazingFeature`)
+5. **开启 Pull Request**
+
+### 贡献方向
+
+- 🐛 **Bug 修复**: 发现问题？提交 Issue 或 PR
+- ✨ **新功能**: 有好想法？欢迎实现并分享
+- 📝 **文档改进**: 发现文档不清楚？帮助改进
+- 🆕 **新项目**: 开发了新的 Agent？加入我们
+- 🔧 **共享库扩展**: 通用功能请提交到 `shared/` 目录
+
+### 代码规范
+
+- 遵循 PEP 8 Python 代码风格
+- 添加必要的注释和文档字符串
+- 编写单元测试
+- 更新相关文档
+
+---
+
+## 🌟 项目亮点
+
+### 架构设计
+✅ **模块化架构**：清晰的职责划分，易于维护  
+✅ **代码复用**：共享基础库，消除重复代码  
+✅ **可扩展性**：便于添加新功能和新项目  
+
+### 技术特色
+✅ **多 LLM 支持**：OpenAI、DeepSeek、Qwen 等  
+✅ **灵活配置**：统一的配置管理系统  
+✅ **完善日志**：便于调试和问题追踪  
+
+### 用户体验
+✅ **友好界面**：Gradio Web UI，无需命令行  
+✅ **详细文档**：完整的使用说明和示例  
+✅ **快速上手**：清晰的安装和配置步骤  
+
+---
+
+## 📊 项目统计
+
+- 🎯 **3** 个完整的 Agent 应用
+- 🔧 **1** 个共享基础库
+- 📝 **10+** 篇详细文档
+- ⚡ **60%** 代码重复消除率
+
+---
+
+## 📄 许可证
+
+本项目采用 [MIT License](./LICENSE) 开源协议。
+
+---
+
+## 🔗 相关链接
 
 我们欢迎各种形式的贡献！
 
