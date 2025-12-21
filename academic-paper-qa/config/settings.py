@@ -64,15 +64,11 @@ def initialize_settings(
 
 
 # 导出配置（保持向后兼容）
-class SystemConfig:
-    """系统配置类（向后兼容包装器）"""
+class _SystemConfigMeta(type):
+    """SystemConfig 元类，用于动态属性访问"""
     
-    @classmethod
-    def __getattribute__(cls, name):
+    def __getattr__(cls, name):
         """动态获取配置属性"""
-        if name in ['__class__', '__dict__']:
-            return object.__getattribute__(cls, name)
-        
         config = get_config()
         
         # 路径配置映射
@@ -134,7 +130,12 @@ class SystemConfig:
         if name == 'ensure_directories':
             return config.system.ensure_directories
         
-        raise AttributeError(f"'{cls.__name__}' object has no attribute '{name}'")
+        raise AttributeError(f"'{cls.__name__}' has no attribute '{name}'")
+
+
+class SystemConfig(metaclass=_SystemConfigMeta):
+    """系统配置类（向后兼容包装器）"""
+    pass
 
 
 # 导出

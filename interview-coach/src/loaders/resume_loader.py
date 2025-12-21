@@ -61,7 +61,7 @@ class ResumeLoader:
         
         logger.info("简历加载器已初始化")
     
-    def load_resume(self, file_path: str) -> ResumeData:
+    def load_resume(self, file_path: str):
         """
         加载简历文件
         
@@ -120,6 +120,9 @@ class ResumeLoader:
         self.metadata = metadata
         
         logger.info(f"{SUCCESS_RESUME_LOADED} | 耗时: {elapsed_time:.2f}秒 | 长度: {len(self.resume_content)}")
+        
+        # 延迟导入避免循环依赖
+        from src.models.resume import ResumeData
         
         return ResumeData(
             content=self.resume_content,

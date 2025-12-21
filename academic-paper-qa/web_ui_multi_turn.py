@@ -395,23 +395,30 @@ def main():
             # RAG 问答
             with gr.Tab("🔍 RAG 问答（推荐）"):
                 
-                gr.Markdown("""
-                ### 📚 基于文档的智能问答
-                - ✅ 支持多轮对话，自动记忆上下文
-                - 📖 基于已加载的学术文献回答
-                - 🎯 答案准确，有据可查
-                """)
+                gr.Markdown("### 📚 基于文档的智能问答")
                 
                 with gr.Row():
+                    # 左侧：对话区域（占据主要空间）
                     with gr.Column(scale=3):
                         chatbot_rag = gr.Chatbot(
-                            label="对话窗口",
+                            label="💬 对话窗口",
                             height=450,
                             type="messages",
                             render_markdown=True
                         )
+                        
+                        # 输入框区域
+                        with gr.Row():
+                            msg_rag = gr.Textbox(
+                                label="输入消息",
+                                placeholder="输入您的问题...",
+                                scale=4,
+                                container=False
+                            )
+                            submit_rag = gr.Button("发送", variant="primary", scale=1)
                     
-                    with gr.Column(scale=1):
+                    # 右侧：设置面板（紧凑布局）
+                    with gr.Column(scale=1, min_width=200):
                         gr.Markdown("### ⚙️ 设置")
                         
                         use_history_rag = gr.Checkbox(
@@ -436,7 +443,7 @@ def main():
                         )
                         
                         gr.Markdown("---")
-                        gr.Markdown("### 📊 对话历史控制")
+                        gr.Markdown("### 📊 对话历史")
                         
                         max_history_slider = gr.Slider(
                             minimum=1,
@@ -462,43 +469,81 @@ def main():
                         gr.Markdown("---")
                         
                         clear_btn_rag = gr.Button(
-                            "🗑️ 清空对话历史",
+                            "🗑️ 清空对话",
                             variant="secondary",
                             size="sm"
                         )
                 
-                # RAG 对话接口
-                chat_interface_rag = gr.ChatInterface(
-                    fn=chat_rag,
-                    chatbot=chatbot_rag,
-                    additional_inputs=[
-                        enable_web_rag,
-                        top_k_rag,
-                        use_history_rag
-                    ]
+                # 绑定 RAG 对话事件
+                def user_rag(message, history):
+                    """处理用户输入"""
+                    if not message or not message.strip():
+                        return "", history
+                    return "", history + [[message, None]]
+                
+                def bot_rag(history, enable_web, top_k, use_history):
+                    """处理机器人回复"""
+                    if not history or history[-1][1] is not None:
+                        return history
+                    
+                    user_msg = history[-1][0]
+                    # 转换历史格式供 chat_rag 使用
+                    chat_history = [[h[0], h[1]] for h in history[:-1] if h[1] is not None]
+                    
+                    # 调用 chat_rag 获取回复
+                    response = chat_rag(user_msg, chat_history, enable_web, top_k, use_history)
+                    history[-1][1] = response
+                    return history
+                
+                submit_rag.click(
+                    user_rag, 
+                    [msg_rag, chatbot_rag], 
+                    [msg_rag, chatbot_rag], 
+                    queue=False
+                ).then(
+                    bot_rag,
+                    [chatbot_rag, enable_web_rag, top_k_rag, use_history_rag],
+                    chatbot_rag
+                )
+                
+                msg_rag.submit(
+                    user_rag, 
+                    [msg_rag, chatbot_rag], 
+                    [msg_rag, chatbot_rag], 
+                    queue=False
+                ).then(
+                    bot_rag,
+                    [chatbot_rag, enable_web_rag, top_k_rag, use_history_rag],
+                    chatbot_rag
                 )
             
             # 直接对话
             with gr.Tab("💬 直接对话"):
                 
-                gr.Markdown("""
-                ### 🤖 纯 LLM 对话
-                - 💬 不使用文档检索
-                - 🧠 基于模型知识回答
-                - 📎 支持附加文档作为上下文
-                - ⚡ 响应速度快
-                """)
+                gr.Markdown("### 🤖 纯 LLM 对话")
                 
                 with gr.Row():
+                    # 左侧：对话区域（占据主要空间）
                     with gr.Column(scale=3):
                         chatbot_direct = gr.Chatbot(
-                            label="对话窗口",
+                            label="💬 对话窗口",
                             height=450,
                             type="messages",
                             render_markdown=True
                         )
+                        
+                        # 输入框区域
+                        with gr.Row():
+                            msg_direct = gr.Textbox(
+                                label="输入消息",
+                                placeholder="输入您的问题...",
+                                scale=4,
+                                container=False
+                            )
+                            submit_direct = gr.Button("发送", variant="primary", scale=1)
                     
-                    with gr.Column(scale=1):
+                    # 右侧：设置面板（紧凑布局）
+                    with gr.Column(scale=1, min_width=200):
                         gr.Markdown("### ⚙️ 设置")
                         
                         # 文档选择器
@@ -520,7 +565,7 @@ def main():
                         gr.Markdown("---")
                         
                         clear_btn_direct = gr.Button(
-                            "🗑️ 清空对话历史",
+                            "🗑️ 清空对话",
                             variant="secondary",
                             size="sm"
                         )
@@ -535,11 +580,47 @@ def main():
                     outputs=doc_selector
                 )
                 
-                # 直接对话接口
-                chat_interface_direct = gr.ChatInterface(
-                    fn=chat_direct,
-                    chatbot=chatbot_direct,
-                    additional_inputs=[enable_web_direct, doc_selector]
+                # 绑定直接对话事件
+                def user_direct(message, history):
+                    """处理用户输入"""
+                    if not message or not message.strip():
+                        return "", history
+                    return "", history + [[message, None]]
+                
+                def bot_direct(history, enable_web, docs):
+                    """处理机器人回复"""
+                    if not history or history[-1][1] is not None:
+                        return history
+                    
+                    user_msg = history[-1][0]
+                    # 转换历史格式供 chat_direct 使用
+                    chat_history = [[h[0], h[1]] for h in history[:-1] if h[1] is not None]
+                    
+                    # 调用 chat_direct 获取回复
+                    response = chat_direct(user_msg, chat_history, enable_web, docs)
+                    history[-1][1] = response
+                    return history
+                
+                submit_direct.click(
+                    user_direct, 
+                    [msg_direct, chatbot_direct], 
+                    [msg_direct, chatbot_direct], 
+                    queue=False
+                ).then(
+                    bot_direct,
+                    [chatbot_direct, enable_web_direct, doc_selector],
+                    chatbot_direct
+                )
+                
+                msg_direct.submit(
+                    user_direct, 
+                    [msg_direct, chatbot_direct], 
+                    [msg_direct, chatbot_direct], 
+                    queue=False
+                ).then(
+                    bot_direct,
+                    [chatbot_direct, enable_web_direct, doc_selector],
+                    chatbot_direct
                 )
             
             # 系统信息
@@ -583,13 +664,21 @@ def main():
         )
         
         # 清空对话历史按钮绑定
+        def clear_rag():
+            clear_chat_history()
+            return []
+        
+        def clear_direct():
+            clear_chat_history()
+            return []
+        
         clear_btn_rag.click(
-            clear_chat_history,
+            clear_rag,
             outputs=[chatbot_rag]
         )
         
         clear_btn_direct.click(
-            clear_chat_history,
+            clear_direct,
             outputs=[chatbot_direct]
         )
     

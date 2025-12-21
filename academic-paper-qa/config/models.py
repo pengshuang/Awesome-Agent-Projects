@@ -6,7 +6,7 @@ Pydantic 配置模型
 
 from pathlib import Path
 from typing import Optional, Literal
-from pydantic import Field, field_validator, ConfigDict
+from pydantic import Field, field_validator, ConfigDict, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -278,15 +278,16 @@ class SystemConfig(BaseSettings):
             directory.mkdir(parents=True, exist_ok=True)
 
 
-class AppConfig(BaseSettings):
+class AppConfig(BaseModel):
     """应用总配置（组合所有配置）"""
     
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+    model_config = ConfigDict(
+        # 使用 BaseModel 而不是 BaseSettings
+        # 不从环境变量自动读取，避免冲突
+        extra="ignore",
     )
     
+    # 嵌套配置对象 - 它们会自己处理环境变量
     system: SystemConfig = Field(default_factory=SystemConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
@@ -296,6 +297,20 @@ class AppConfig(BaseSettings):
     
     def __init__(self, **data):
         """初始化配置"""
+        # 先初始化各个子配置（它们会自己从环境变量读取）
+        if 'system' not in data:
+            data['system'] = SystemConfig()
+        if 'llm' not in data:
+            data['llm'] = LLMConfig()
+        if 'embedding' not in data:
+            data['embedding'] = EmbeddingConfig()
+        if 'vector_store' not in data:
+            data['vector_store'] = VectorStoreConfig()
+        if 'rag' not in data:
+            data['rag'] = RAGConfig()
+        if 'web_search' not in data:
+            data['web_search'] = WebSearchConfig()
+            
         super().__init__(**data)
         
         # 设置 Chroma 默认路径

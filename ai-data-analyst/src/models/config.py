@@ -145,7 +145,7 @@ class SystemSettings(BaseSettings):
     max_history_turns: int = Field(
         default=10,
         ge=1,
-        le=50,
+        le=200,  # 提高限制以支持更长的对话历史
         alias="MAX_HISTORY_TURNS"
     )
     
