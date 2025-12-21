@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 环境变量
+.env
+.env.local
+
+# 日志
+logs/
+*.log
+
+# 数据（保留目录但忽略内容）
+data/databases/*.db
+data/databases/*.sqlite
+data/databases/*.sqlite3
+data/files/*
+!data/files/.gitkeep
+data/knowledge_base/*
+!data/knowledge_base/.gitkeep
+data/cache/*
+!data/cache/.gitkeep
+
+# 输出
+output/
+*.csv
+*.xlsx
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 其他
+*.bak
+*.tmp
+.DS_Store

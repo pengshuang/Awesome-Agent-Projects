@@ -1,0 +1,35 @@
+# AI 数据分析助手 - 依赖包
+
+# Web 界面
+gradio>=4.0.0
+
+# 数据验证和解析
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# LLM 和向量索引
+llama-index>=0.9.0
+llama-index-llms-openai>=0.1.0
+llama-index-llms-openai-like>=0.1.0
+llama-index-embeddings-openai>=0.1.0
+llama-index-embeddings-huggingface>=0.1.0
+
+# 数据处理
+pandas>=2.0.0
+openpyxl>=3.1.0  # Excel 支持
+pyarrow>=14.0.0  # Parquet 支持
+
+# 数据可视化
+plotly>=5.17.0
+
+# 日志
+loguru>=0.7.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# Web 搜索（可选）
+google-search-results>=2.4.0  # SerpAPI
+
+# 其他工具
+requests>=2.31.0

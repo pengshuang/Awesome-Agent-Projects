@@ -1,0 +1,113 @@
+# 🤖 Awesome Agent Projects
+
+> A curated collection of LLM Agent projects covering academic research, enterprise applications, tool development, and more
+
+[![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+English | [中文](README_CN.md)
+
+## 📚 Contents
+
+- [Project List](#project-list)
+- [Quick Start](#quick-start)
+- [How to Contribute](#how-to-contribute)
+
+---
+
+## Project List
+
+This repository contains 3 independent Agent projects:
+
+- 📖 **[Academic Paper Q&A System](./academic-paper-qa)** - Intelligent paper reading assistant based on RAG
+- 📊 **[AI Data Analyst](./ai-data-analyst)** - Intelligent data analysis tool with multi-source support
+- 💼 **[AI Interview Coach](./interview-coach)** - Resume evaluation and mock interview services
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/pengshuang/Awesome-Agent-Projects.git
+cd Awesome-Agent-Projects
+```
+
+Then enter the specific project directory and follow its README for detailed setup instructions.
+
+---
+
+## Project Details
+
+### 📖 Academic Paper Intelligent Q&A System
+
+Intelligent paper reading assistant based on RAG technology, supporting multi-turn conversations and in-depth analysis.
+
+**Core Features**: Multi-turn Dialogue · RAG Retrieval · Web Search · Multi-format Support (PDF/DOCX/TXT/MD)
+
+**Tech Stack**: LlamaIndex · Chroma · Gradio · BGE Embedding
+
+[📂 View Project](./academic-paper-qa) | [📖 Documentation](./academic-paper-qa/README.md)
+
+---
+
+### 📊 AI Data Analyst
+
+Intelligent data analysis tool supporting multi-source data fusion analysis and interactive visualization.
+
+**Core Features**: NL2SQL · Multi-source (SQLite/CSV/Excel) · Data Visualization · Intelligent Reports
+
+**Tech Stack**: LlamaIndex · Pandas · Plotly · Gradio
+
+[📂 View Project](./ai-data-analyst) | [📖 Documentation](./ai-data-analyst/README.md)
+
+---
+
+### 💼 AI Interview Coach
+
+Intelligent interview coaching system providing resume evaluation and mock interview services.
+
+**Core Features**: Resume Analysis · Mock Interviews (Technical/Behavioral/Comprehensive) · Web-Enhanced · Improvement Suggestions
+
+**Tech Stack**: OpenAI API · Gradio · DuckDuckGo
+
+[📂 View Project](./interview-coach) | [📖 Documentation](./interview-coach/README.md)
+
+---
+
+## 💡 Technical Highlights
+
+- 🤖 **Multi-LLM Support**: OpenAI, DeepSeek, Qwen, etc.
+- 🎨 **User-Friendly Interface**: Gradio-based Web UI
+- 🔍 **RAG Enhancement**: Vector retrieval + semantic search
+- 📊 **Visualization**: Data charts and Markdown rendering
+- 🌐 **Web Capabilities**: Real-time information retrieval
+
+---
+
+## 🤝 How to Contribute
+
+Contributions are welcome! You can:
+
+- 🐛 Submit bug reports or fixes
+- ✨ Add new features or projects
+- 📝 Improve documentation
+- 💡 Share usage experiences
+
+Contribution steps: Fork → Create Branch → Commit Changes → Create Pull Request
+
+---
+
+## 📄 License
+
+[MIT License](./LICENSE)
+
+---
+
+<div align="center">
+
+⭐ **Find it useful? Give it a Star!** ⭐
+
+[Report Issues](https://github.com/pengshuang/Awesome-Agent-Projects/issues) · [Join Discussions](https://github.com/pengshuang/Awesome-Agent-Projects/discussions)
+
+</div>
