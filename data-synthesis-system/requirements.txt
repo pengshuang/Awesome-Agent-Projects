@@ -1,0 +1,21 @@
+# Core dependencies
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langgraph>=0.0.20
+openai>=1.10.0
+
+# Data validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Web UI
+gradio>=4.15.0
+
+# Utilities
+python-dotenv>=1.0.0
+loguru>=0.7.2
+
+# Document processing
+pypdf>=3.17.0
+python-docx>=1.1.0
+markdown>=3.5.1
