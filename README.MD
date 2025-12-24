@@ -18,11 +18,12 @@ English | [中文](README_CN.md)
 
 ## Project List
 
-This repository contains 3 independent Agent projects:
+This repository contains 4 independent Agent projects:
 
 - 📖 **[Academic Paper Q&A System](./academic-paper-qa)** - Intelligent paper reading assistant based on RAG
 - 📊 **[AI Data Analyst](./ai-data-analyst)** - Intelligent data analysis tool with multi-source support
 - 💼 **[AI Interview Coach](./interview-coach)** - Resume evaluation and mock interview services
+- 🤖 **[Data Synthesis System](./data-synthesis-system)** - Multi-agent system for generating high-quality training data
 
 ---
 
@@ -72,6 +73,18 @@ Intelligent interview coaching system providing resume evaluation and mock inter
 **Tech Stack**: OpenAI API · Gradio · DuckDuckGo
 
 [📂 View Project](./interview-coach) | [📖 Documentation](./interview-coach/README.md)
+
+---
+
+### 🤖 Multi-Agent Data Synthesis System
+
+Multi-agent collaborative system for generating high-quality training data with iterative curriculum learning.
+
+**Core Features**: Iterative Curriculum · 3-Agent Collaboration (Proposer/Solver/Validator) · Quality Assurance · Real-time Visualization
+
+**Tech Stack**: LangGraph · LangChain · Pydantic · Gradio
+
+[📂 View Project](./data-synthesis-system) | [📖 Documentation](./data-synthesis-system/README.md)
 
 ---
 
