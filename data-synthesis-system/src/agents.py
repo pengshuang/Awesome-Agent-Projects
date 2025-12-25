@@ -52,7 +52,7 @@ class ProposerAgent:
         history_text = ""
         if history_buffer:
             history_text = "\n\n".join([
-                f"问题 {i+1}: {qa.question}\n答案: {qa.answer}"
+                f"问题 {i+1}: {qa['question'] if isinstance(qa, dict) else qa.question}\n答案: {qa['answer'] if isinstance(qa, dict) else qa.answer}"
                 for i, qa in enumerate(history_buffer)
             ])
         
@@ -89,7 +89,17 @@ class ProposerAgent:
             content = content.strip()
             
             # Parse JSON
-            result = json.loads(content)
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as json_error:
+                logger.error("Failed to parse JSON: {}", str(json_error))
+                logger.debug("Raw content: {}", content[:500])
+                # Return a default structure when JSON parsing fails
+                return {
+                    "question": "[JSON解析失败，请检查LLM输出]",
+                    "answer": "生成的内容格式错误",
+                    "reasoning": f"JSON解析错误: {str(json_error)}"
+                }
             
             # Validate and create Pydantic model
             try:
@@ -107,7 +117,12 @@ class ProposerAgent:
             
         except Exception as e:
             logger.error("Failed to generate QA pair: {}", str(e))
-            raise
+            # Return default instead of raising
+            return {
+                "question": "[生成失败]",
+                "answer": "发生未预期的错误",
+                "reasoning": f"错误: {str(e)}"
+            }
 
 
 class SolverAgent:
@@ -158,7 +173,16 @@ class SolverAgent:
             content = content.strip()
             
             # Parse JSON
-            result = json.loads(content)
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as json_error:
+                logger.error("Failed to parse JSON: {}", str(json_error))
+                logger.debug("Raw content: {}", content[:500])
+                # Return a default structure when JSON parsing fails
+                return {
+                    "reasoning_steps": ["JSON解析失败，无法提取推理步骤"],
+                    "final_answer": f"生成的内容格式错误: {str(json_error)}"
+                }
             
             # Validate and create Pydantic model
             try:
@@ -175,7 +199,11 @@ class SolverAgent:
             
         except Exception as e:
             logger.error("Failed to solve question: {}", str(e))
-            raise
+            # Return default instead of raising
+            return {
+                "reasoning_steps": ["发生未预期的错误"],
+                "final_answer": f"错误: {str(e)}"
+            }
 
 
 class ValidatorAgent:
@@ -233,7 +261,17 @@ class ValidatorAgent:
             content = content.strip()
             
             # Parse JSON
-            result = json.loads(content)
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as json_error:
+                logger.error("Failed to parse JSON: {}", str(json_error))
+                logger.debug("Raw content: {}", content[:500])
+                # Return a default structure when JSON parsing fails
+                return {
+                    "score": 1.0,
+                    "reasoning": f"JSON解析失败: {str(json_error)}",
+                    "feedback": "生成的验证结果格式错误"
+                }
             
             # Validate and create Pydantic model
             try:
@@ -244,12 +282,17 @@ class ValidatorAgent:
                 return result
             
             logger.success(
-                "Validation complete: {}",
-                "PASSED" if output.is_valid else "FAILED"
+                "Validation complete: score = {}/10",
+                output.score
             )
             
             return output
             
         except Exception as e:
             logger.error("Failed to validate answer: {}", str(e))
-            raise
+            # Return default instead of raising
+            return {
+                "score": 1.0,
+                "reasoning": f"验证过程发生错误: {str(e)}",
+                "feedback": "无法完成验证"
+            }

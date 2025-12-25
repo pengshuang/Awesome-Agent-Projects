@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from loguru import logger
 
-from config import settings
+from config import settings, PROMPTS
 from src.models import TaskType, SynthesisRequest
 from src.graph import DataSynthesisGraph
 from src.utils import (
@@ -20,6 +20,9 @@ from src.utils import (
 # Initialize
 ensure_directories()
 
+# Global stop flag
+stop_flag = {"should_stop": False}
+
 
 def format_iteration_detail(detail: dict, iteration: int) -> str:
     """Format iteration detail for display."""
@@ -27,7 +30,10 @@ def format_iteration_detail(detail: dict, iteration: int) -> str:
 ---
 ## 🔄 迭代 {iteration}
 
+<div class="proposer-block">
+
 ### 📝 提议者 (Proposer)
+
 """
     
     if detail.get("proposer_output"):
@@ -41,52 +47,76 @@ def format_iteration_detail(detail: dict, iteration: int) -> str:
 
 **生成理由：**
 {prop.get('reasoning', 'N/A')}
+
 """
     else:
-        md += "_未生成_\n"
+        md += "_未生成_\n\n"
     
-    md += """
+    md += """</div>
+
+<div class="solver-block">
+
 ### 🔍 求解者 (Solver)
+
 """
     
     if detail.get("solver_output"):
         solver = detail["solver_output"]
-        md += f"""
+        md += """
 **推理步骤：**
+
 """
-        for i, step in enumerate(solver.get("reasoning_steps", []), 1):
-            md += f"{i}. {step}\n"
+        reasoning_steps = solver.get("reasoning_steps", [])
+        for i, step in enumerate(reasoning_steps, 1):
+            # Clean up the step text and format it nicely
+            step_text = str(step).strip()
+            # Remove leading number and dot if present (e.g., "1. " or "1) ")
+            import re
+            step_text = re.sub(r'^\d+[\.\)]\s*', '', step_text)
+            # Add indentation for better readability
+            md += f"{i}. {step_text}\n\n"
         
-        md += f"""
-**最终答案：**
+        md += f"""**最终答案：**
+
 {solver.get('final_answer', 'N/A')}
+
 """
     else:
-        md += "_未生成_\n"
+        md += "_未生成_\n\n"
     
-    md += """
+    md += """</div>
+
+<div class="validator-block">
+
 ### ✅ 验证者 (Validator)
+
 """
     
     if detail.get("validator_output"):
         validator = detail["validator_output"]
+        score = validator.get("score", 0)
         is_valid = validator.get("is_valid", False)
-        status_emoji = "✅ 通过" if is_valid else "❌ 未通过"
+        status_emoji = f"✅ 通过 ({score}/10)" if is_valid else f"❌ 未通过 ({score}/10)"
         
         md += f"""
 **验证结果：** {status_emoji}
 
 **评估理由：**
 {validator.get('reasoning', 'N/A')}
+
 """
         
-        if not is_valid and validator.get('feedback'):
+        if validator.get('feedback'):
             md += f"""
-**反馈意见：**
+**详细反馈：**
 {validator['feedback']}
+
 """
     else:
-        md += "_未验证_\n"
+        md += "_未验证_\n\n"
+    
+    md += """</div>
+"""
     
     return md
 
@@ -96,6 +126,15 @@ def synthesis_workflow_generator(
     uploaded_file,
     task_type: str,
     max_iterations: int,
+    temperature: float,
+    score_threshold: float,
+    proposer_system_prompt: str,
+    proposer_user_first_prompt: str,
+    proposer_user_iterative_prompt: str,
+    solver_system_prompt: str,
+    solver_user_prompt: str,
+    validator_system_prompt: str,
+    validator_user_prompt: str,
 ):
     """
     Run the data synthesis workflow with real-time updates.
@@ -107,6 +146,15 @@ def synthesis_workflow_generator(
         uploaded_file: Uploaded file
         task_type: Selected task type
         max_iterations: Maximum iterations
+        temperature: Temperature for LLM generation
+        score_threshold: Minimum score to accept QA pair
+        proposer_system_prompt: Proposer system prompt
+        proposer_user_first_prompt: Proposer user first prompt
+        proposer_user_iterative_prompt: Proposer user iterative prompt
+        solver_system_prompt: Solver system prompt
+        solver_user_prompt: Solver user prompt
+        validator_system_prompt: Validator system prompt
+        validator_user_prompt: Validator user prompt
     
     Yields:
         Tuple of (status, iteration_display, results_display, download_file)
@@ -141,6 +189,30 @@ def synthesis_workflow_generator(
         # Create synthesis request
         logger.info("Starting synthesis - Task: {}, Iterations: {}", task_type, max_iterations)
         
+        # Update prompts in PROMPTS dict temporarily for this run
+        original_prompts = {
+            "proposer": PROMPTS["proposer"].copy(),
+            "solver": PROMPTS["solver"].copy(),
+            "validator": PROMPTS["validator"].copy(),
+        }
+        
+        PROMPTS["proposer"]["system"] = proposer_system_prompt
+        PROMPTS["proposer"]["user_first"] = proposer_user_first_prompt
+        PROMPTS["proposer"]["user_iterative"] = proposer_user_iterative_prompt
+        PROMPTS["solver"]["system"] = solver_system_prompt
+        PROMPTS["solver"]["user"] = solver_user_prompt
+        PROMPTS["validator"]["system"] = validator_system_prompt
+        PROMPTS["validator"]["user"] = validator_user_prompt
+        
+        # Update settings temporarily
+        original_temp = settings.temperature
+        original_threshold = settings.score_threshold
+        settings.temperature = temperature
+        settings.score_threshold = score_threshold
+        
+        # Reset stop flag at the start
+        stop_flag["should_stop"] = False
+        
         # Initial yield
         yield (
             "🚀 正在启动数据合成流程...",
@@ -160,6 +232,7 @@ def synthesis_workflow_generator(
             "failed_attempts": 0,
             "is_complete": False,
             "iteration_details": [],
+            "score_threshold": score_threshold,
         }
         
         # Create graph
@@ -173,6 +246,18 @@ def synthesis_workflow_generator(
             
             # Stream the graph execution
             for output in graph.stream(state):
+                # Check stop flag
+                if stop_flag["should_stop"]:
+                    logger.warning("User requested stop. Terminating synthesis...")
+                    state["is_complete"] = True
+                    yield (
+                        f"⚠️ **用户手动停止**\n\n已生成 {len(state.get('valid_pairs', []))} 个有效问答对",
+                        "",
+                        "",
+                        None
+                    )
+                    break
+                
                 # output is a dict with node name as key
                 for node_name, node_state in output.items():
                     # Update state
@@ -188,24 +273,24 @@ def synthesis_workflow_generator(
                     # Add real-time log messages
                     if node_name == "propose":
                         current_iteration = current_iter + 1
-                        current_status_log += f"\n🔄 **第 {current_iteration} 轮迭代**\n"
-                        current_status_log += f"📝 [Proposer] 正在生成问题...\n"
+                        current_status_log += f"\n<small>🔄 **第 {current_iteration} 轮迭代**</small>\n"
+                        current_status_log += f"<small>📝 [Proposer] 正在生成问题...</small>\n"
                         
                     elif node_name == "solve":
-                        current_status_log += f"🔍 [Solver] 正在求解问题...\n"
+                        current_status_log += f"<small>🔍 [Solver] 正在求解问题...</small>\n"
                         
                     elif node_name == "validate":
-                        current_status_log += f"✅ [Validator] 正在验证答案...\n"
+                        current_status_log += f"<small>✅ [Validator] 正在验证答案...</small>\n"
                         
                     elif node_name == "update":
                         # Check if validation passed
                         if iteration_details and len(iteration_details) > 0:
                             last_detail = iteration_details[-1]
                             if last_detail.get("is_valid"):
-                                current_status_log += f"✅ 验证通过！已添加到有效问答对\n"
+                                current_status_log += f"<small>✅ 验证通过！已添加到有效问答对</small>\n"
                             else:
-                                current_status_log += f"❌ 验证未通过，继续下一轮\n"
-                        current_status_log += f"---\n"
+                                current_status_log += f"<small>❌ 验证未通过，继续下一轮</small>\n"
+                        current_status_log += f"<small>---</small>\n"
                     
                     # Format iteration display
                     iteration_display = ""
@@ -243,14 +328,24 @@ def synthesis_workflow_generator(
             total_iterations = state.get("current_iteration", 0)
             execution_time = time.time() - start_time
             
-            # Build final status
-            final_status = (
-                "## ✅ 数据合成完成！\n\n"
-                f"**总迭代次数:** {total_iterations}\n"
-                f"**有效问答对:** {len(valid_pairs)}\n"
-                f"**验证失败:** {failed_attempts}\n"
-                f"**执行时间:** {execution_time:.2f} 秒\n"
-            )
+            # Check if stopped early
+            if stop_flag["should_stop"]:
+                final_status = (
+                    "## ⚠️ 数据合成已停止\n\n"
+                    f"**已完成迭代:** {total_iterations}\n"
+                    f"**有效问答对:** {len(valid_pairs)}\n"
+                    f"**验证失败:** {failed_attempts}\n"
+                    f"**执行时间:** {execution_time:.2f} 秒\n"
+                )
+            else:
+                # Build final status
+                final_status = (
+                    "## ✅ 数据合成完成！\n\n"
+                    f"**总迭代次数:** {total_iterations}\n"
+                    f"**有效问答对:** {len(valid_pairs)}\n"
+                    f"**验证失败:** {failed_attempts}\n"
+                    f"**执行时间:** {execution_time:.2f} 秒\n"
+                )
             
             # Save results
             output_file = None
@@ -288,6 +383,13 @@ def synthesis_workflow_generator(
                 "",
                 None
             )
+        finally:
+            # Restore original prompts and settings
+            PROMPTS["proposer"] = original_prompts["proposer"]
+            PROMPTS["solver"] = original_prompts["solver"]
+            PROMPTS["validator"] = original_prompts["validator"]
+            settings.temperature = original_temp
+            settings.score_threshold = original_threshold
     
     except Exception as e:
         logger.error("Workflow error: {}", str(e))
@@ -316,6 +418,50 @@ def create_ui():
             padding: 1rem;
             margin: 1rem 0;
             border-radius: 4px;
+        }
+        .iteration-box {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: #fafafa;
+            margin-top: 1rem;
+        }
+        .iteration-box::-webkit-scrollbar {
+            width: 8px;
+        }
+        .iteration-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .iteration-box::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .iteration-box::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .proposer-block {
+            background: linear-gradient(to right, #fff5f5, #ffffff);
+            border-left: 4px solid #ff6b6b;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+        }
+        .solver-block {
+            background: linear-gradient(to right, #f0f9ff, #ffffff);
+            border-left: 4px solid #4dabf7;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+        }
+        .validator-block {
+            background: linear-gradient(to right, #f4fce3, #ffffff);
+            border-left: 4px solid #82c91e;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
         }
         """
     ) as app:
@@ -376,12 +522,35 @@ def create_ui():
                     info="生成问答对的最大尝试次数"
                 )
                 
+                temperature = gr.Slider(
+                    minimum=0.0,
+                    maximum=2.0,
+                    value=settings.temperature,
+                    step=0.1,
+                    label="Temperature",
+                    info="控制生成的随机性，越高越随机"
+                )
+                
+                score_threshold = gr.Slider(
+                    minimum=1.0,
+                    maximum=10.0,
+                    value=settings.score_threshold,
+                    step=0.5,
+                    label="评分阈值",
+                    info="只保留评分达到此阈值的问答对"
+                )
+                
                 # Action buttons
                 gr.Markdown("### 3. 执行")
                 with gr.Row():
                     start_btn = gr.Button(
                         "🚀 开始合成",
                         variant="primary",
+                        size="lg",
+                    )
+                    stop_btn = gr.Button(
+                        "⏹️ 停止",
+                        variant="stop",
                         size="lg",
                     )
                     clear_btn = gr.Button(
@@ -404,6 +573,7 @@ def create_ui():
                         iteration_output = gr.Markdown(
                             label="迭代详情",
                             value="等待开始...",
+                            elem_classes=["iteration-box"],
                         )
                     
                     with gr.Tab("✅ 通过验证的问答对"):
@@ -411,6 +581,57 @@ def create_ui():
                             label="生成的问答对",
                             value="等待生成...",
                         )
+                    
+                    with gr.Tab("⚙️ Prompts 配置"):
+                        gr.Markdown("### 配置各Agent的系统提示词和用户提示词")
+                        
+                        with gr.Accordion("📝 Proposer (提议者)", open=False):
+                            proposer_system_prompt = gr.Textbox(
+                                label="System Prompt",
+                                value=PROMPTS["proposer"]["system"],
+                                lines=10,
+                                max_lines=20,
+                            )
+                            proposer_user_first_prompt = gr.Textbox(
+                                label="User Prompt (首次)",
+                                value=PROMPTS["proposer"]["user_first"],
+                                lines=10,
+                                max_lines=20,
+                            )
+                            proposer_user_iterative_prompt = gr.Textbox(
+                                label="User Prompt (迭代)",
+                                value=PROMPTS["proposer"]["user_iterative"],
+                                lines=10,
+                                max_lines=20,
+                            )
+                        
+                        with gr.Accordion("🔍 Solver (求解者)", open=False):
+                            solver_system_prompt = gr.Textbox(
+                                label="System Prompt",
+                                value=PROMPTS["solver"]["system"],
+                                lines=8,
+                                max_lines=20,
+                            )
+                            solver_user_prompt = gr.Textbox(
+                                label="User Prompt",
+                                value=PROMPTS["solver"]["user"],
+                                lines=8,
+                                max_lines=20,
+                            )
+                        
+                        with gr.Accordion("✅ Validator (验证者)", open=False):
+                            validator_system_prompt = gr.Textbox(
+                                label="System Prompt",
+                                value=PROMPTS["validator"]["system"],
+                                lines=12,
+                                max_lines=25,
+                            )
+                            validator_user_prompt = gr.Textbox(
+                                label="User Prompt",
+                                value=PROMPTS["validator"]["user"],
+                                lines=10,
+                                max_lines=20,
+                            )
                 
                 # Download
                 download_file = gr.File(
@@ -447,6 +668,12 @@ def create_ui():
         )
         
         # Event handlers
+        def stop_synthesis():
+            """Stop the current synthesis process."""
+            stop_flag["should_stop"] = True
+            logger.info("Stop button clicked by user")
+            return "⏹️ 正在停止合成..."
+        
         start_btn.click(
             fn=synthesis_workflow_generator,
             inputs=[
@@ -454,6 +681,15 @@ def create_ui():
                 uploaded_file,
                 task_type,
                 max_iterations,
+                temperature,
+                score_threshold,
+                proposer_system_prompt,
+                proposer_user_first_prompt,
+                proposer_user_iterative_prompt,
+                solver_system_prompt,
+                solver_user_prompt,
+                validator_system_prompt,
+                validator_user_prompt,
             ],
             outputs=[
                 status_output,
@@ -463,13 +699,47 @@ def create_ui():
             ],
         )
         
+        stop_btn.click(
+            fn=stop_synthesis,
+            inputs=[],
+            outputs=[status_output],
+        )
+        
         clear_btn.click(
-            fn=lambda: ("", None, TaskType.LOGICAL_REASONING.value, "点击\"开始合成\"按钮开始生成数据...", "等待开始...", "等待生成...", None),
+            fn=lambda: (
+                "", 
+                None, 
+                TaskType.LOGICAL_REASONING.value, 
+                10,
+                settings.temperature,
+                settings.score_threshold,
+                PROMPTS["proposer"]["system"],
+                PROMPTS["proposer"]["user_first"],
+                PROMPTS["proposer"]["user_iterative"],
+                PROMPTS["solver"]["system"],
+                PROMPTS["solver"]["user"],
+                PROMPTS["validator"]["system"],
+                PROMPTS["validator"]["user"],
+                "点击\"开始合成\"按钮开始生成数据...", 
+                "等待开始...", 
+                "等待生成...", 
+                None
+            ),
             inputs=[],
             outputs=[
                 document_text,
                 uploaded_file,
                 task_type,
+                max_iterations,
+                temperature,
+                score_threshold,
+                proposer_system_prompt,
+                proposer_user_first_prompt,
+                proposer_user_iterative_prompt,
+                solver_system_prompt,
+                solver_user_prompt,
+                validator_system_prompt,
+                validator_user_prompt,
                 status_output,
                 iteration_output,
                 results_output,

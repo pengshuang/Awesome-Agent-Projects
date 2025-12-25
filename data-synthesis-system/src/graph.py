@@ -4,6 +4,7 @@ from typing import TypedDict, Annotated, Sequence
 from langgraph.graph import StateGraph, END
 from loguru import logger
 
+from config import settings
 from src.models import (
     SynthesisState,
     QAPair,
@@ -109,8 +110,15 @@ class DataSynthesisGraph:
             
         except Exception as e:
             logger.error("Proposer failed: {}", str(e))
-            state["error"] = f"Proposer error: {str(e)}"
-            state["is_complete"] = True
+            # Don't stop the workflow, just use default values
+            state["current_question"] = "[生成失败]"
+            state["current_reference_answer"] = "发生错误"
+            state["current_reasoning"] = f"错误: {str(e)}"
+            iteration_detail["proposer_output"] = {
+                "question": "[生成失败]",
+                "answer": "发生错误",
+                "reasoning": f"错误: {str(e)}",
+            }
         
         # Store the iteration detail (will be updated by subsequent nodes)
         state["current_iteration_detail"] = iteration_detail
@@ -148,8 +156,13 @@ class DataSynthesisGraph:
             
         except Exception as e:
             logger.error("Solver failed: {}", str(e))
-            state["error"] = f"Solver error: {str(e)}"
-            state["is_complete"] = True
+            # Don't stop the workflow, just use default value
+            state["current_solver_answer"] = f"求解失败: {str(e)}"
+            if "current_iteration_detail" in state:
+                state["current_iteration_detail"]["solver_output"] = {
+                    "reasoning_steps": ["发生错误"],
+                    "final_answer": f"错误: {str(e)}",
+                }
         
         return state
     
@@ -166,17 +179,22 @@ class DataSynthesisGraph:
             
             # Handle both ValidatorOutput object and dict
             if isinstance(output, dict):
-                is_valid = output.get("is_valid", False)
+                score = output.get("score", 0)
                 reasoning = output.get("reasoning", "")
                 feedback = output.get("feedback", "")
             else:
-                is_valid = output.is_valid
+                score = output.score
                 reasoning = output.reasoning
                 feedback = output.feedback
+            
+            # Get score threshold from settings or state
+            score_threshold = state.get("score_threshold", settings.score_threshold)
+            is_valid = score >= score_threshold
             
             # Save validator output to iteration detail
             if "current_iteration_detail" in state:
                 state["current_iteration_detail"]["validator_output"] = {
+                    "score": score,
                     "is_valid": is_valid,
                     "reasoning": reasoning,
                     "feedback": feedback,
@@ -184,7 +202,7 @@ class DataSynthesisGraph:
                 state["current_iteration_detail"]["is_valid"] = is_valid
             
             if is_valid:
-                logger.success("✓ Validation PASSED")
+                logger.success("✓ Validation PASSED (score: {}/10, threshold: {})", score, score_threshold)
                 # Create QA pair
                 qa_pair = {
                     "question": state["current_question"],
@@ -192,6 +210,7 @@ class DataSynthesisGraph:
                     "reasoning": state["current_reasoning"],
                     "task_type": state["task_type"],
                     "iteration": state["current_iteration"] + 1,
+                    "score": score,  # Add score to QA pair
                 }
                 
                 # Add to valid pairs
@@ -206,13 +225,21 @@ class DataSynthesisGraph:
                 
                 logger.info("Valid QA pairs: {}", len(state["valid_pairs"]))
             else:
-                logger.warning("✗ Validation FAILED: {}", output.feedback)
+                logger.warning("✗ Validation FAILED (score: {}/10 < threshold: {}): {}", score, score_threshold, feedback)
                 state["failed_attempts"] = state.get("failed_attempts", 0) + 1
             
         except Exception as e:
             logger.error("Validator failed: {}", str(e))
-            state["error"] = f"Validator error: {str(e)}"
-            state["is_complete"] = True
+            # Don't stop the workflow, treat as failed validation
+            if "current_iteration_detail" in state:
+                state["current_iteration_detail"]["validator_output"] = {
+                    "score": 1.0,
+                    "is_valid": False,
+                    "reasoning": f"验证过程出错: {str(e)}",
+                    "feedback": "无法完成验证",
+                }
+                state["current_iteration_detail"]["is_valid"] = False
+            state["failed_attempts"] = state.get("failed_attempts", 0) + 1
         
         return state
     

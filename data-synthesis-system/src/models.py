@@ -50,9 +50,9 @@ class SolverOutput(BaseModel):
 
 class ValidatorOutput(BaseModel):
     """Output from the Validator agent."""
-    is_valid: bool = Field(..., description="Whether the answer is valid")
-    reasoning: str = Field(..., description="Reasoning for validation decision")
-    feedback: Optional[str] = Field(None, description="Feedback if invalid")
+    score: float = Field(..., description="Score from 1-10 for answer quality", ge=1, le=10)
+    reasoning: str = Field(..., description="Reasoning for the score")
+    feedback: Optional[str] = Field(None, description="Detailed feedback on the answer")
 
 
 class IterationDetail(BaseModel):

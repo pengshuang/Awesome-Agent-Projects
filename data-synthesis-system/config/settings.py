@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     temperature: float = 0.7
     max_tokens: int = 2000
     
+    # Validation Configuration
+    score_threshold: float = 7.0  # Minimum score (1-10) to accept a QA pair
+    
     # System Configuration
     max_iterations: int = 10
     
