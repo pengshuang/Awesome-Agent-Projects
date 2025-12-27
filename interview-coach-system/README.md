@@ -14,7 +14,7 @@ English | [中文](README_CN.md)
 ![ui-1](imgs/ui-1.png)
 ![ui-2](imgs/ui-2.png)
 
-<img src="/Users/pengshuang/Library/Application Support/typora-user-images/截屏2025-12-27 20.16.54.png" alt="截屏2025-12-27 20.16.54" style="zoom: 25%;" />
+![ui-4](imgs/ui-4.png)
 
 <img src="imgs/ui-3.png" alt="ui-3" style="zoom: 25%;" />
 
