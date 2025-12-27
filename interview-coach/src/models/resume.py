@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ResumeMetadata(BaseModel):
@@ -37,14 +37,13 @@ class ResumeMetadata(BaseModel):
             raise ValueError("文件大小不能超过 100MB")
         return v
     
-    @computed_field
-    @property
-    def file_size_mb(self) -> float:
+    def get_file_size_mb(self) -> float:
         """文件大小（MB）"""
         return round(self.file_size / (1024 * 1024), 2)
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_mode": "validation",
+        "json_schema_extra": {
             "example": {
                 "file_name": "resume.pdf",
                 "file_path": "/path/to/resume.pdf",
@@ -52,7 +51,8 @@ class ResumeMetadata(BaseModel):
                 "content_length": 5000,
                 "load_time": 1.23,
             }
-        }
+        },
+    }
 
 
 class ResumeData(BaseModel):
@@ -75,23 +75,20 @@ class ResumeData(BaseModel):
             raise ValueError("简历内容不能为空")
         return v
     
-    @computed_field
-    @property
-    def preview(self) -> str:
+    def get_preview(self) -> str:
         """获取内容预览（前200字符）"""
         length = 200
         if len(self.content) <= length:
             return self.content
         return self.content[:length] + "..."
     
-    @computed_field
-    @property
-    def word_count(self) -> int:
+    def get_word_count(self) -> int:
         """获取字数统计"""
         return len(self.content.split())
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_mode": "validation",
+        "json_schema_extra": {
             "example": {
                 "content": "个人简历内容...",
                 "metadata": {
@@ -102,4 +99,5 @@ class ResumeData(BaseModel):
                     "load_time": 1.23,
                 }
             }
-        }
+        },
+    }

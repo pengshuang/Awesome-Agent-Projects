@@ -59,7 +59,7 @@ class InterviewAgent:
             api_key=config.llm_api_key,
             api_base=config.llm_api_base,
             model=config.llm_model,
-            temperature=config.llm_temperature
+            temperature=config.temperature
         )
         
         # 对话历史
@@ -70,8 +70,8 @@ class InterviewAgent:
         if enable_web_search:
             try:
                 self.web_search_tool = WebSearchTool(
-                    max_results=SystemConfig.MAX_SEARCH_RESULTS,
-                    engine=SystemConfig.WEB_SEARCH_ENGINE,
+                    max_results=config.max_search_results,
+                    engine=config.web_search_engine,
                 )
                 logger.info(INFO_WEB_SEARCH_ENABLED)
             except Exception as e:

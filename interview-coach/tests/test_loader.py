@@ -91,7 +91,7 @@ class TestResumeLoader:
     def test_resume_preview(self, loader):
         """测试简历预览功能"""
         result = loader.load_resume("tests/fixtures/sample.pdf")
-        preview = result.preview
+        preview = result.get_preview()
         
         assert isinstance(preview, str)
         assert len(preview) <= 203  # 200 + "..."

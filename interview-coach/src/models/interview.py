@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, Optional, Literal
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MessageRole(str, Enum):
@@ -48,21 +48,21 @@ class InterviewMessage(BaseModel):
             raise ValueError("消息内容不能为空")
         return v.strip()
     
-    @computed_field
-    @property
-    def content_length(self) -> int:
+    def get_content_length(self) -> int:
         """内容长度"""
         return len(self.content)
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_mode": "validation",
+        "json_schema_extra": {
             "example": {
                 "role": "user",
                 "content": "我有3年的Python开发经验...",
                 "timestamp": "2025-12-21T10:00:00",
                 "tokens": 150,
             }
-        }
+        },
+    }
 
 
 class InterviewSession(BaseModel):
@@ -123,56 +123,45 @@ class InterviewSession(BaseModel):
         
         return [{"role": msg.role.value, "content": msg.content} for msg in messages]
     
-    @computed_field
-    @property
-    def total_turns(self) -> int:
+    def get_total_turns(self) -> int:
         """总轮数（用户-助手对话对数）"""
         return sum(1 for msg in self.messages if msg.role == MessageRole.USER)
     
-    @computed_field
-    @property
-    def duration(self) -> float:
+    def get_duration(self) -> float:
         """面试时长（秒）"""
         end_time = self.ended_at or datetime.now()
         return (end_time - self.started_at).total_seconds()
     
-    @computed_field
-    @property
-    def duration_minutes(self) -> float:
+    def get_duration_minutes(self) -> float:
         """面试时长（分钟）"""
-        return round(self.duration / 60, 2)
+        return round(self.get_duration() / 60, 2)
     
-    @computed_field
-    @property
-    def total_tokens(self) -> int:
+    def get_total_tokens(self) -> int:
         """总Token数"""
         return sum(msg.tokens or 0 for msg in self.messages)
     
-    @computed_field
-    @property
     def is_active(self) -> bool:
         """会话是否仍在进行"""
         return self.ended_at is None
     
     def end_session(self) -> None:
         """结束会话"""
-        if self.is_active:
+        if self.is_active():
             self.ended_at = datetime.now()
     
-    @computed_field
-    @property
-    def summary(self) -> str:
+    def get_summary(self) -> str:
         """生成会话摘要"""
-        status = "进行中" if self.is_active else "已结束"
+        status = "进行中" if self.is_active() else "已结束"
         return (
             f"面试类型: {self.interview_type.value} | "
-            f"对话轮数: {self.total_turns} | "
-            f"时长: {self.duration_minutes}分钟 | "
+            f"对话轮数: {self.get_total_turns()} | "
+            f"时长: {self.get_duration_minutes()}分钟 | "
             f"状态: {status}"
         )
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_mode": "validation",
+        "json_schema_extra": {
             "example": {
                 "interview_type": "technical",
                 "resume_content": "个人简历内容...",
@@ -181,4 +170,5 @@ class InterviewSession(BaseModel):
                 "enable_web_search": True,
                 "max_history_turns": 20,
             }
-        }
+        },
+    }

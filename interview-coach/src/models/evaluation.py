@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ScoreDetails(BaseModel):
@@ -31,9 +31,7 @@ class ScoreDetails(BaseModel):
     education: float = Field(..., description="教育背景", ge=0, le=10)
     overall_impression: float = Field(..., description="整体印象", ge=0, le=10)
     
-    @computed_field
-    @property
-    def total_score(self) -> float:
+    def get_total_score(self) -> float:
         """总分（满分100）"""
         return round(
             (
@@ -49,21 +47,21 @@ class ScoreDetails(BaseModel):
             2,
         )
     
-    @computed_field
-    @property
-    def grade(self) -> str:
+    def get_grade(self) -> str:
         """评级：优秀/良好/中等/待改进"""
-        if self.total_score >= 85:
+        total_score = self.get_total_score()
+        if total_score >= 85:
             return "优秀"
-        elif self.total_score >= 70:
+        elif total_score >= 70:
             return "良好"
-        elif self.total_score >= 60:
+        elif total_score >= 60:
             return "中等"
         else:
             return "待改进"
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_mode": "validation",
+        "json_schema_extra": {
             "example": {
                 "basic_info": 8.5,
                 "work_experience": 7.0,
@@ -72,7 +70,8 @@ class ScoreDetails(BaseModel):
                 "education": 9.0,
                 "overall_impression": 8.0,
             }
-        }
+        },
+    }
 
 
 class EvaluationResult(BaseModel):
@@ -111,16 +110,15 @@ class EvaluationResult(BaseModel):
         """验证列表项不为空字符串"""
         return [item.strip() for item in v if item.strip()]
     
-    @computed_field
-    @property
-    def summary(self) -> str:
+    def get_summary(self) -> str:
         """生成评估摘要"""
         if self.score_details:
-            return f"总分: {self.score_details.total_score}/100 ({self.score_details.grade})"
+            return f"总分: {self.score_details.get_total_score()}/100 ({self.score_details.get_grade()})"
         return "暂无评分"
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_mode": "validation",
+        "json_schema_extra": {
             "example": {
                 "evaluation_text": "## 评估结果\n...",
                 "position": "Python后端工程师",
@@ -131,4 +129,5 @@ class EvaluationResult(BaseModel):
                 "model": "gpt-3.5-turbo",
                 "elapsed_time": 5.23,
             }
-        }
+        },
+    }
