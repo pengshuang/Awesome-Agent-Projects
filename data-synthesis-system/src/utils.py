@@ -57,21 +57,32 @@ def format_qa_for_display(qa_dict: dict, index: int) -> str:
     Returns:
         Formatted markdown string
     """
+    iteration = qa_dict.get('iteration', 'N/A')
+    score = qa_dict.get('score', 'N/A')
+    
     md = f"""
-### 问答对 {index}
+<details class="qa-card">
+<summary class="qa-summary">
+    <span class="qa-number">问答对 {index}</span>
+    <span class="qa-meta">迭代 {iteration} | 评分 {score}</span>
+</summary>
+<div class="qa-content">
 
 **问题：**
+
 {qa_dict['question']}
 
 **答案：**
+
 {qa_dict['answer']}
 
 **推理：**
+
 {qa_dict.get('reasoning', 'N/A')}
 
-**迭代次数：** {qa_dict.get('iteration', 'N/A')}
+</div>
+</details>
 
----
 """
     return md
 

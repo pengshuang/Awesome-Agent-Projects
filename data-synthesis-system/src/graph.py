@@ -143,6 +143,11 @@ class DataSynthesisGraph:
                 reasoning_steps = output.reasoning_steps
                 final_answer = output.final_answer
             
+            # Ensure final_answer is a string
+            if not isinstance(final_answer, str):
+                logger.warning("final_answer is not a string, converting: {}", type(final_answer))
+                final_answer = str(final_answer)
+            
             state["current_solver_answer"] = final_answer
             
             # Save solver output to iteration detail
@@ -152,7 +157,9 @@ class DataSynthesisGraph:
                     "final_answer": final_answer,
                 }
             
-            logger.success("Solver answer: {}", final_answer[:100])
+            # Safely log the answer preview
+            preview = final_answer[:100] if len(final_answer) > 100 else final_answer
+            logger.success("Solver answer: {}", preview)
             
         except Exception as e:
             logger.error("Solver failed: {}", str(e))
