@@ -156,7 +156,8 @@ python web_ui.py
 
 - **[👤 用户指南](docs/USER_GUIDE.md)** - 详细使用说明，适合普通用户
 - **[👨‍💻 开发指南](docs/DEVELOPER_GUIDE.md)** - 二次开发文档，适合开发者
-- **[🏛️ 架构设计](ARCHITECTURE.md)** - 系统架构和设计思路
+- **[🏛️ 架构设计](docs/ARCHITECTURE.md)** - 系统架构和设计思路
+- **[🔗 LangChain & LangGraph 应用详解](docs/LANGCHAIN_LANGGRAPH_GUIDE.md)** - 深入讲解核心技术栈
 - **[📝 更新日志](CHANGELOG.md)** - 版本变更记录
 
 ---
