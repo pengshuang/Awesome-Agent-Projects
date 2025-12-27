@@ -10,8 +10,6 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-latest-green.svg)](https://github.com/langchain-ai/langgraph)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-</div>
-
 ---
 
 ## 💁 简介
@@ -29,6 +27,12 @@
 - 📊 **评测数据集**：创建模型评估的Benchmark
 - 🏫 **教育题库**：自动生成练习题和考试题
 - 🤖**智能客服**：为客服系统准备FAQ数据
+
+### 交互界面
+
+![ui-1](/Users/pengshuang/Awesome-Agent-Projects/data-synthesis-system/imgs/ui-1.png)
+
+![ui-2](/Users/pengshuang/Awesome-Agent-Projects/data-synthesis-system/imgs/ui-2.png)
 
 ---
 
@@ -236,8 +240,6 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 <div align="center">
 
 **如果这个项目对你有帮助，请给一个 ⭐ Star！**
-
-</div>
 
 ---
 
