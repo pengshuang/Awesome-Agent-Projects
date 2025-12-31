@@ -20,10 +20,10 @@ English | [中文](README_CN.md)
 
 This repository contains 4 independent Agent projects:
 
-- 📖 **[Academic Paper Q&A System](./academic-paper-qa)** - Intelligent paper reading assistant based on RAG
-- 📊 **[AI Data Analyst](./ai-data-analyst)** - Intelligent data analysis tool with multi-source support
-- 💼 **[AI Interview Coach](./interview-coach)** - Resume evaluation and mock interview services
-- 🤖 **[Data Synthesis System](./data-synthesis-system)** - Multi-agent system for generating high-quality training data
+- 📖 **[Academic Paper Q&A System](./paper-qa-system)** - Intelligent paper reading assistant based on RAG
+- 📊 **[AI Data Analyst](./ai-data-analyst-system)** - Intelligent data analysis tool with multi-source support
+- 💼 **[AI Interview Coach](./interview-coach-system)** - Resume evaluation and mock interview services
+- 🤖 **[Data Synthesis System](./multi-agent-data-synthesis-system)** - Multi-agent system for generating high-quality training data
 
 ---
 
@@ -117,10 +117,7 @@ Contribution steps: Fork → Create Branch → Commit Changes → Create Pull Re
 
 ---
 
-<div align="center">
-
 ⭐ **Find it useful? Give it a Star!** ⭐
 
 [Report Issues](https://github.com/pengshuang/Awesome-Agent-Projects/issues) · [Join Discussions](https://github.com/pengshuang/Awesome-Agent-Projects/discussions)
 
-</div>

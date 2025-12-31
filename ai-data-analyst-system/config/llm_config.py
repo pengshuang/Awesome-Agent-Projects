@@ -121,7 +121,7 @@ def get_embedding_model(
     """
     # 从环境变量获取配置
     provider = provider or os.getenv("EMBEDDING_PROVIDER", "huggingface")
-    model_name = model_name or os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-small-zh-v1.5")
+    model_name = model_name or os.getenv("EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-small-zh-v1.5")
     api_key = api_key or os.getenv("EMBEDDING_API_KEY") or os.getenv("LLM_API_KEY")
     
     # 使用 Pydantic 验证配置
