@@ -30,9 +30,9 @@
 
 ### 交互界面
 
-![ui-1](/Users/pengshuang/Awesome-Agent-Projects/data-synthesis-system/imgs/ui-1.png)
+![ui-1](/Users/pengshuang/Awesome-Agent-Projects/multi-agent-data-synthesis-system/imgs/ui-1.png)
 
-![ui-2](/Users/pengshuang/Awesome-Agent-Projects/data-synthesis-system/imgs/ui-2.png)
+![ui-2](/Users/pengshuang/Awesome-Agent-Projects/multi-agent-data-synthesis-system/imgs/ui-2.png)
 
 ---
 
