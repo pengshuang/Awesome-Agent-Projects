@@ -1,6 +1,5 @@
 # Multi-Agent 数据合成系统
 
-<div align="center">
 
 🤖 **基于多智能体协作的高质量训练数据合成系统**
 
@@ -30,9 +29,9 @@
 
 ### 交互界面
 
-![ui-1](/Users/pengshuang/Awesome-Agent-Projects/multi-agent-data-synthesis-system/imgs/ui-1.png)
+`![ui-1](./imgs/ui-1.png)
 
-![ui-2](/Users/pengshuang/Awesome-Agent-Projects/multi-agent-data-synthesis-system/imgs/ui-2.png)
+![ui-2](./imgs/ui-2.png)
 
 ---
 
@@ -236,8 +235,6 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 - [OpenAI](https://openai.com/) - 强大的语言模型
 
 ---
-
-<div align="center">
 
 **如果这个项目对你有帮助，请给一个 ⭐ Star！**
 
