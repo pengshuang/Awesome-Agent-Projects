@@ -18,12 +18,13 @@ English | [中文](README_CN.md)
 
 ## Project List
 
-This repository contains 4 independent Agent projects:
+This repository contains 5 independent Agent projects:
 
 - 📖 **[Academic Paper Q&A System](./paper-qa-system)** - Intelligent paper reading assistant based on RAG
 - 📊 **[AI Data Analyst](./ai-data-analyst-system)** - Intelligent data analysis tool with multi-source support
 - 💼 **[AI Interview Coach](./interview-coach-system)** - Resume evaluation and mock interview services
-- 🤖 **[Data Synthesis System](./text-data-synthesis-system)** - Multi-agent system for generating high-quality training data
+- 🎨 **[Multimodal Data Synthesis System](./multi-agent-data-synthesis-system)** - High-quality multimodal training data synthesis platform with multi-agent collaboration
+- 🤖 **[Text Data Synthesis System](./text-data-synthesis-system)** - Multi-agent system for generating high-quality text training data
 
 ---
 
@@ -76,15 +77,27 @@ Intelligent interview coaching system providing resume evaluation and mock inter
 
 ---
 
-### 🤖 Multi-Agent Data Synthesis System
+### 🎨 Multimodal Data Synthesis System
 
-Multi-agent collaborative system for generating high-quality training data with iterative curriculum learning.
+High-quality multimodal training data synthesis platform based on multi-agent collaboration with iterative curriculum learning. Supports image input and multimodal LLMs.
+
+**Core Features**: Iterative Curriculum Learning · 3-Agent Collaboration (Proposer/Solver/Validator) · Multimodal Support · Real-time Progress Dashboard · Quality Assurance
+
+**Tech Stack**: LangGraph · LangChain · OpenAI/Qwen Vision · Pydantic · Gradio
+
+[📂 View Project](./multi-agent-data-synthesis-system) | [📖 English Documentation](./multi-agent-data-synthesis-system/README.md) | [📖 中文文档](./multi-agent-data-synthesis-system/README_CN.md)
+
+---
+
+### 🤖 Text Data Synthesis System
+
+Multi-agent collaborative system for generating high-quality text training data with iterative curriculum learning.
 
 **Core Features**: Iterative Curriculum · 3-Agent Collaboration (Proposer/Solver/Validator) · Quality Assurance · Real-time Visualization
 
 **Tech Stack**: LangGraph · LangChain · Pydantic · Gradio
 
-[📂 View Project](./data-synthesis-system) | [📖 Documentation](./data-synthesis-system/README.md)
+[📂 View Project](./text-data-synthesis-system) | [📖 Documentation](./text-data-synthesis-system/README.md)
 
 ---
 
