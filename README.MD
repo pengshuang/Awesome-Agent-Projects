@@ -18,13 +18,15 @@ English | [中文](README_CN.md)
 
 ## Project List
 
-This repository contains 5 independent Agent projects:
+This repository contains 7 independent Agent projects:
 
 - 📖 **[Academic Paper Q&A System](./paper-qa-system)** - Intelligent paper reading assistant based on RAG
 - 📊 **[AI Data Analyst](./ai-data-analyst-system)** - Intelligent data analysis tool with multi-source support
 - 💼 **[AI Interview Coach](./interview-coach-system)** - Resume evaluation and mock interview services
+- 📚 **[English Learning Assistant](./english-learning-assistant)** - AI-powered English learning companion with comprehensive features
 - 🎨 **[Multimodal Data Synthesis System](./multimodal-data-synthesis-system)** - High-quality multimodal training data synthesis platform with multi-agent collaboration
 - 🤖 **[Text Data Synthesis System](./text-data-synthesis-system)** - Multi-agent system for generating high-quality text training data
+- 🌏 **[Travel Assistant Agent](./travel-assistant-agent)** - Intelligent travel planning assistant with multi-agent capabilities
 
 ---
 
@@ -77,6 +79,18 @@ Intelligent interview coaching system providing resume evaluation and mock inter
 
 ---
 
+### 📚 English Learning Assistant
+
+AI-powered English learning companion providing comprehensive language learning support with intelligent conversation practice.
+
+**Core Features**: Vocabulary Learning · Grammar Analysis · Conversation Practice · Writing Correction · Reading Comprehension · Pronunciation Guidance
+
+**Tech Stack**: OpenAI/Claude API · Gradio · Text-to-Speech · Speech Recognition
+
+[📂 View Project](./english-learning-assistant) | [📖 Documentation](./english-learning-assistant/README.md)
+
+---
+
 ### 🎨 Multimodal Data Synthesis System
 
 High-quality multimodal training data synthesis platform based on multi-agent collaboration with iterative curriculum learning. Supports image input and multimodal LLMs.
@@ -98,6 +112,18 @@ Multi-agent collaborative system for generating high-quality text training data 
 **Tech Stack**: LangGraph · LangChain · Pydantic · Gradio
 
 [📂 View Project](./text-data-synthesis-system) | [📖 Documentation](./text-data-synthesis-system/README.md)
+
+---
+
+### 🌏 Travel Assistant Agent
+
+Production-grade intelligent travel planning assistant with autonomous agent capabilities and multimodal interaction.
+
+**Core Features**: Proactive Need Discovery · Multi-Plan Generation · Dynamic Optimization · Scenario Adaptation (Family/Senior/Budget) · Multimodal (Text/Image/Voice) · Itinerary Management
+
+**Tech Stack**: Gradio 4.x · Claude/OpenAI API · Pure API-driven · Lightweight Deployment
+
+[📂 View Project](./travel-assistant-agent) | [📖 Documentation](./travel-assistant-agent/README.md)
 
 ---
 

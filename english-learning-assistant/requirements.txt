@@ -1,0 +1,26 @@
+# 核心依赖
+gradio>=4.0.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# HTTP请求
+requests>=2.31.0
+httpx>=0.25.0
+dashscope>=1.24.6
+
+# 数据处理
+pandas>=2.0.0
+numpy>=1.24.0
+
+# 文件处理
+Pillow>=10.0.0
+PyPDF2>=3.0.0
+python-multipart>=0.0.6
+
+# 日志和工具
+loguru>=0.7.0
+pyyaml>=6.0
+
+# 音频处理
+pydub>=0.25.1

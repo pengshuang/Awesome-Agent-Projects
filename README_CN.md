@@ -19,13 +19,15 @@
 
 ## 项目列表
 
-本仓库包含 5 个独立的 Agent 项目：
+本仓库包含 7 个独立的 Agent 项目：
 
 - 📖 **[学术论文问答系统](./paper-qa-system)** - 基于 RAG 的智能论文阅读助手
 - 📊 **[AI 数据分析助手](./ai-data-analyst-system)** - 支持多数据源的智能数据分析工具
 - 💼 **[AI 面试教练](./interview-coach-system)** - 提供简历评估和模拟面试服务
+- 📚 **[英语学习助手](./english-learning-assistant)** - AI驱动的全方位英语学习伴侣
 - 🎨 **[多模态数据合成系统](./multimodal-data-synthesis-system)** - 基于多智能体的高质量多模态训练数据合成平台
 - 🤖 **[文本数据合成系统](./text-data-synthesis-system)** - 基于多智能体协作的高质量文本训练数据生成系统
+- 🌏 **[智能旅游助手Agent](./travel-assistant-agent)** - 具备自主规划能力的生产级智能旅游助手
 
 ---
 
@@ -78,6 +80,18 @@ cd Awesome-Agent-Projects
 
 ---
 
+### 📚 英语学习助手
+
+AI驱动的全方位英语学习伴侣，提供智能化的对话练习和综合语言学习支持。
+
+**核心特性**: 词汇学习 · 语法分析 · 对话练习 · 写作批改 · 阅读理解 · 发音指导
+
+**技术栈**: OpenAI/Claude API · Gradio · 语音合成 · 语音识别
+
+[📂 查看项目](./english-learning-assistant) | [📖 文档](./english-learning-assistant/README.md)
+
+---
+
 ### 🎨 多模态数据合成系统
 
 基于多智能体的高质量多模态训练数据合成平台，采用 Iterative Curriculum 机制逐步提升生成数据的难度，支持图片输入和多模态LLM。
@@ -99,6 +113,18 @@ cd Awesome-Agent-Projects
 **技术栈**: LangGraph · LangChain · Pydantic · Gradio
 
 [📂 查看项目](./text-data-synthesis-system) | [📖 文档](./text-data-synthesis-system/README.md)
+
+---
+
+### 🌏 智能旅游助手Agent
+
+生产级智能旅游规划助手，具备自主Agent能力和多模态交互，提供专业的一站式旅游规划服务。
+
+**核心特性**: 主动需求挖掘 · 多方案生成 · 动态优化 · 场景适配（亲子/老年/穷游） · 多模态交互（文本/图片/语音） · 行程管理
+
+**技术栈**: Gradio 4.x · Claude/OpenAI API · 纯API驱动 · 轻量化部署
+
+[📂 查看项目](./travel-assistant-agent) | [📖 文档](./travel-assistant-agent/README.md)
 
 ---
 

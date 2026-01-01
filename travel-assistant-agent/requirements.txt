@@ -1,0 +1,24 @@
+# ==================== 核心依赖 ====================
+# Gradio 4.x - Web界面框架
+gradio>=4.0.0
+
+# Requests - HTTP请求库
+requests>=2.31.0
+
+# Python-dotenv - 环境变量管理
+python-dotenv>=1.0.0
+
+# Pillow - 图片处理
+Pillow>=10.0.0
+
+# ==================== 可选依赖 ====================
+# 如需更好的性能，可以安装以下包
+
+# aiohttp - 异步HTTP请求（可选）
+# aiohttp>=3.9.0
+
+# 注意事项：
+# 1. 所有依赖都是轻量级的，不包含大模型相关的重型依赖
+# 2. 不需要LangChain、LLaMAIndex等框架
+# 3. 不需要PyTorch、TensorFlow等深度学习框架
+# 4. Python版本要求：3.10+
