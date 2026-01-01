@@ -9,6 +9,7 @@ from typing import Optional
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.llms import LLM
 from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.embeddings.dashscope import DashScopeEmbedding
 from llama_index.llms.openai import OpenAI
 from loguru import logger
 
@@ -164,36 +165,44 @@ def get_embedding_model(provider: Optional[str] = None) -> BaseEmbedding:
                 f"请参考上方日志的解决方案"
             )
     
-    elif provider == "fastembed":
-        # 使用 FastEmbed（轻量级，推荐）
-        logger.info(f"准备加载 FastEmbed 模型...")
-        
-        model_name = config.embedding.model_name
-        
+    elif provider == "qwen3":
+        # 使用 Qwen3 Embedding 模型（DashScope）
+        logger.info("准备加载 Qwen3 Embedding 模型...")
+
         try:
-            from llama_index.embeddings.fastembed import FastEmbedEmbedding
+            import os
+            api_key = config.embedding.api_key or os.getenv("DASHSCOPE_API_KEY")
+            model = config.embedding.model_name or "text-embedding-v3"
             
-            logger.info(f"正在加载 FastEmbed 模型: {model_name}")
+            if not api_key:
+                raise RuntimeError(
+                    "DASHSCOPE_API_KEY 未设置。请在 .env 文件中设置 EMBEDDING_API_KEY 或环境变量 DASHSCOPE_API_KEY"
+                )
             
-            embedding = FastEmbedEmbedding(
-                model_name=model_name,
+            logger.info(f"使用 DashScope Embedding: {model}")
+            # DashScope batch_size 最大为 10
+            batch_size = min(config.embedding.batch_size, 10)
+            logger.info(f"DashScope Embedding batch_size 设置为: {batch_size}")
+            
+            return DashScopeEmbedding(
+                model_name=model,
+                api_key=api_key,
+                text_type="document",  # 设置文本类型
+                embed_batch_size=batch_size  # 设置批处理大小
             )
-            
-            logger.info(f"✅ FastEmbed 模型加载成功: {model_name}")
-            return embedding
-            
+
         except ImportError as e:
-            logger.error(f"❌ 无法导入 FastEmbed 库: {e}")
-            logger.error("\n请安装 FastEmbed:")
-            logger.error("  pip install llama-index-embeddings-fastembed")
+            logger.error(f"❌ 无法导入 DashScope Embedding 库: {e}")
+            logger.error("\n请安装必要的依赖:")
+            logger.error("  pip install llama-index-embeddings-dashscope")
             raise RuntimeError(
-                f"FastEmbed 依赖缺失\n"
-                f"请运行: pip install llama-index-embeddings-fastembed"
+                f"DashScope Embedding 依赖缺失\n"
+                f"请运行: pip install llama-index-embeddings-dashscope"
             )
-            
+
         except Exception as e:
-            logger.error(f"❌ 无法加载 FastEmbed 模型: {e}")
-            raise RuntimeError(f"FastEmbed 加载失败: {str(e)}")
+            logger.error(f"❌ 无法加载 DashScope Embedding 模型: {e}")
+            raise RuntimeError(f"DashScope Embedding 加载失败: {str(e)}")
     
     else:
         raise ValueError(f"不支持的 Embedding 提供商: {provider}\n"

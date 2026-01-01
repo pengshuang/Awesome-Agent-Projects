@@ -65,7 +65,7 @@ class EmbeddingConfig(BaseSettings):
         extra="ignore"
     )
     
-    provider: Literal["openai", "huggingface", "fastembed"] = Field(
+    provider: Literal["openai", "huggingface", "fastembed", "qwen3"] = Field(
         default="huggingface",
         description="Embedding 提供商"
     )

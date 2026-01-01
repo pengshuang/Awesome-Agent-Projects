@@ -1,223 +1,482 @@
-# 📖 使用指南
+# 📖 用户使用指南
 
-> 面向普通用户的完整使用手册
+> 面向普通用户的快速上手指南，5分钟即可开始使用
 
 ## 目录
 
-- [快速开始](#快速开始)
-- [配置说明](#配置说明)
-- [使用界面](#使用界面)
-- [常见场景](#常见场景)
-- [问题排查](#问题排查)
+- [安装配置](#安装配置)
+- [Web UI 使用](#web-ui-使用)
+- [配置选项详解](#配置选项详解)
+- [使用技巧](#使用技巧)
+- [常见问题](#常见问题)
 
 ---
 
-## 快速开始
+## 安装配置
 
-### 系统要求
-
-- Python 3.9+
-- 4GB+ RAM
-- 2GB+ 磁盘空间
-
-### 安装步骤
+### 第一步：安装依赖
 
 ```bash
-# 1. 克隆项目
-git clone <repository-url>
-cd academic-paper-qa
+# 克隆项目
+git clone https://github.com/pengshuang/Awesome-Agent-Projects.git
+cd Awesome-Agent-Projects/paper-qa-system
 
-# 2. 安装依赖
+# 安装 Python 依赖
 pip install -r requirements.txt
-
-# 3. 配置环境变量
-cp .env.example .env
-vim .env  # 编辑配置
 ```
 
-### 最小配置
-
-`.env` 文件必填项：
+### 第二步：配置 API Key
 
 ```bash
-# LLM 配置（必填）
-LLM_API_KEY=your-api-key
-LLM_API_BASE=https://api.openai.com/v1
-LLM_MODEL=gpt-3.5-turbo
+# 复制配置模板
+cp .env.example .env
 
-# Embedding 配置（推荐本地模型）
+# 编辑配置文件
+vim .env  # 或使用其他编辑器
+```
+
+**最小配置示例**（只需填这 3 项）：
+
+```bash
+# LLM API Key（必填）
+LLM_API_KEY=sk-your-api-key-here
+
+# LLM API 地址（必填）
+LLM_API_BASE=https://api.moonshot.cn/v1
+
+# LLM 模型（必填）
+LLM_MODEL=moonshot-v1-8k
+
+# Embedding 提供商（推荐本地模型，免费）
+EMBEDDING_PROVIDER=huggingface
+```
+
+**支持的 LLM 提供商**：
+
+| 提供商 | API Base URL | 推荐模型 | 说明 |
+|-------|-------------|----------|------|
+| **Moonshot (Kimi)** | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` | 国内速度快 |
+| **DeepSeek** | `https://api.deepseek.com/v1` | `deepseek-chat` | 性价比高 |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-3.5-turbo` | 需要国际网络 |
+| **Qwen (通义千问)** | 见官方文档 | `qwen-turbo` | 阿里云服务 |
+
+### 第三步：启动系统
+
+```bash
+# 启动 Web UI
+./start_web_multi.sh
+
+# 或直接运行
+python web_ui_multi_turn.py
+
+# 浏览器打开 http://127.0.0.1:7860
+```
+
+---
+
+## Web UI 使用
+
+### 界面概览
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  学术论文智能问答系统                                      │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  📁 第1步：构建索引                                       │
+│  ┌────────────────────────────────────────────┐         │
+│  │  [ 构建索引 ]  [ 重新构建 ]                  │         │
+│  └────────────────────────────────────────────┘         │
+│                                                          │
+│  💬 第2步：提问                                           │
+│  ┌────────────────────────────────────────────┐         │
+│  │  对话框（显示历史对话）                        │         │
+│  │                                              │         │
+│  │  👤: 这篇论文讲了什么？                        │         │
+│  │  🤖: 这篇论文主要介绍...                       │         │
+│  └────────────────────────────────────────────┘         │
+│  ┌────────────────────────────────────────────┐         │
+│  │  输入你的问题...                              │         │
+│  │  [ 发送 ]  [ 清空历史 ]                      │         │
+│  └────────────────────────────────────────────┘         │
+│                                                          │
+│  ⚙️ 高级设置                                             │
+│  检索Top-K: 5  | 历史轮数: 10 | 网络搜索: ✓              │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 使用流程
+
+#### 1. 准备文档
+
+将你的论文文件放入 `data/documents/` 文件夹：
+
+```bash
+cd paper-qa-system
+cp ~/Downloads/paper1.pdf data/documents/
+cp ~/Downloads/paper2.pdf data/documents/
+```
+
+**支持的格式**：
+- PDF (.pdf)
+- Word (.docx)
+- 文本 (.txt, .md)
+
+#### 2. 构建索引
+
+1. 打开 Web UI（http://127.0.0.1:7860）
+2. 点击「**构建索引**」按钮
+3. 等待索引构建完成（约 1-2 分钟）
+
+**提示**：
+- 首次使用会下载 Embedding 模型（约 1GB），请耐心等待
+- 索引只需构建一次，除非添加新文档
+- 添加新文档后，再次点击「构建索引」即可增量更新
+
+#### 3. 开始提问
+
+在输入框中输入问题，点击「发送」：
+
+```
+👤: 这篇论文的主要贡献是什么？
+
+🤖: 根据论文内容，主要贡献包括：
+    1. 提出了 xxx 方法...
+    2. 在 xxx 数据集上取得了 SOTA 性能...
+    
+    来源：paper.pdf 第 3 页
+```
+
+---
+
+## 配置选项详解
+
+### LLM 配置
+
+```bash
+# API Key（必填）
+LLM_API_KEY=your-api-key
+
+# API 地址（必填）
+LLM_API_BASE=https://api.moonshot.cn/v1
+
+# 模型名称（必填）
+LLM_MODEL=moonshot-v1-8k
+
+# 生成温度（0.0-2.0，越低越确定，越高越随机）
+TEMPERATURE=0.1
+
+# 最大输出 tokens（可选）
+MAX_TOKENS=2000
+```
+
+### Embedding 配置
+
+**方案1：本地模型（推荐，免费）**
+
+```bash
 EMBEDDING_PROVIDER=huggingface
 EMBEDDING_MODEL_NAME=BAAI/bge-small-zh-v1.5
 ```
 
-**支持的 LLM 服务商：**
-- OpenAI: https://platform.openai.com/
-- DeepSeek: https://platform.deepseek.com/
-- Moonshot: https://platform.moonshot.cn/
+优点：免费、无网络请求限制
+缺点：首次下载约 1GB，需要 4GB+ 内存
 
----
-
-## 配置说明
-
-### 核心配置项
-
-| 配置项 | 说明 | 默认值 | 范围 |
-|--------|------|--------|------|
-| `LLM_API_KEY` | LLM API Key | - | 必填 |
-| `LLM_MODEL` | 模型名称 | gpt-3.5-turbo | - |
-| `TEMPERATURE` | 生成温度 | 0.1 | 0.0-2.0 |
-| `CHUNK_SIZE` | 文本分块大小 | 512 | 1-4096 |
-| `RETRIEVAL_TOP_K` | 检索文档数 | 5 | 1-50 |
-| `ENABLE_WEB_SEARCH` | 启用网络搜索 | true | true/false |
-
-完整配置参见 `.env.example` 文件。
-
----
-
-## 使用界面
-
-### Web UI（推荐）
+**方案2：OpenAI Embedding（付费）**
 
 ```bash
-# 多轮对话（推荐）
-./start_web_multi.sh
-
-# 单轮问答
-./start_web_single.sh
-
-# 访问 http://127.0.0.1:7860
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL_NAME=text-embedding-ada-002
+EMBEDDING_API_KEY=your-openai-key
 ```
 
-**功能：**
-- 文档上传和索引构建
-- RAG/LLM 模式切换
-- 参数调整（Top-K、历史轮数）
-- 启用/禁用网络搜索
+优点：无需下载模型，速度快
+缺点：每次调用需付费
 
-### 命令行
+**方案3：DashScope (阿里云)**
 
 ```bash
-# 多轮对话
-./start_cli_multi.sh
-
-# 单轮问答
-./start_cli_single.sh
+EMBEDDING_PROVIDER=qwen3
+EMBEDDING_MODEL_NAME=text-embedding-v3
+EMBEDDING_API_KEY=your-dashscope-key
 ```
 
-**命令：**
-- `query <问题>` - 提问
-- `list` - 列出文档
-- `clear` - 清除历史
-- `exit` - 退出
-
----
-
-## 常见场景
-
-### 论文快速理解
+### RAG 参数配置
 
 ```bash
-# 1. 添加论文
-cp paper.pdf ./data/documents/
+# 文本分块大小（字符数）
+CHUNK_SIZE=512
 
-# 2. 启动并构建索引
-./start_web_multi.sh
+# 分块重叠大小
+CHUNK_OVERLAP=50
 
-# 3. 提问
-"这篇论文的主要贡献是什么？"
-"实验是如何设计的？"
-```
+# 检索文档数量（Top-K）
+RETRIEVAL_TOP_K=5
 
-### 文献综述
+# 相似度阈值（0.0-1.0）
+RETRIEVAL_SIMILARITY_THRESHOLD=0.7
 
-```bash
-# 添加多篇论文
-cp paper*.pdf ./data/documents/
+# 启用网络搜索
+ENABLE_WEB_SEARCH=true
 
-# 对比分析
-"比较这些论文的方法有什么区别？"
-```
-
-### 技术细节挖掘
-
-使用多轮对话深入讨论：
-```
-👤: Transformer 的注意力机制是如何工作的？
-🤖: ...
-👤: 为什么要使用多头注意力？
-🤖: ...
-```
-
----
-
-## 问题排查
-
-### API Key 错误
-
-**症状：** `API Key validation failed`
-
-**解决：**
-1. 检查 `.env` 中 `LLM_API_KEY`
-2. 确认 API Key 有效且有余额
-3. 检查 `LLM_API_BASE` 正确
-
-### 文档加载失败
-
-**症状：** 构建索引时报错
-
-**解决：**
-1. 检查文档格式（PDF/DOCX/TXT/MD）
-2. 查看日志：`logs/app.log`
-3. 尝试单个文档测试
-
-### Embedding 模型加载失败
-
-**症状：** `Failed to load embedding model`
-
-**解决：**
-1. 首次使用需下载模型（1-2GB）
-2. 或改用 OpenAI Embedding：
-   ```bash
-   EMBEDDING_PROVIDER=openai
-   EMBEDDING_API_KEY=your-key
-   ```
-
-### 答案质量不佳
-
-**优化方法：**
-1. 调整 `RETRIEVAL_TOP_K`（增加检索数）
-2. 使用更清晰具体的问题
-3. 检查文档质量
-
----
-
-## 高级功能
-
-### 历史轮数控制
-
-多轮对话支持 1-50+ 轮历史：
-
-```python
-# 代码设置
-agent = AcademicAgent(max_history_turns=10)
-
-# 环境变量
+# 最大历史轮数
 MAX_HISTORY_TURNS=10
 ```
 
-**推荐：**
-- 快速问答：1-5 轮
-- 一般对话：5-10 轮
-- 深度讨论：20-30 轮
+---
 
-### 批量处理
+## 使用技巧
+
+### 提问技巧
+
+#### ✅ 好的提问方式
+
+```
+具体问题：
+- "Transformer 模型的注意力机制是如何工作的？"
+- "这篇论文在哪个数据集上做了实验？"
+- "BERT 和 GPT 的主要区别是什么？"
+
+带上下文的追问：
+- "它的优势是什么？"（指代前面提到的内容）
+- "能详细解释一下吗？"
+- "有具体例子吗？"
+```
+
+#### ❌ 不好的提问方式
+
+```
+- "讲讲"（太宽泛）
+- "这个怎么样"（没有上下文）
+- "全部内容"（太多信息，LLM 无法处理）
+```
+
+### 参数调优
+
+| 参数 | 值太低 | 推荐值 | 值太高 |
+|------|--------|--------|--------|
+| **Top-K** | 检索不全 | 5-10 | 信息冗余 |
+| **相似度阈值** | 噪音多 | 0.6-0.8 | 检索不到 |
+| **历史轮数** | 无上下文 | 5-15 | 上下文过长 |
+| **Temperature** | 回答死板 | 0.0-0.3 | 回答不稳定 |
+
+### 多轮对话技巧
+
+**连续追问**，让 AI 逐步深入：
+
+```
+第1轮：
+👤: 什么是 Transformer？
+🤖: Transformer 是一种基于注意力机制的神经网络架构...
+
+第2轮：（AI 自动理解"它"指 Transformer）
+👤: 它的主要组件有哪些？
+🤖: Transformer 主要包含两个组件：编码器和解码器...
+
+第3轮：（继续追问）
+👤: 编码器是怎么工作的？
+🤖: 编码器由多层堆叠而成，每层包含...
+```
+
+### 文档管理
+
+**添加新文档**：
 
 ```bash
-for paper in *.pdf; do
-    python cli_single_turn.py query "总结 $paper"
-done
+# 1. 将新文档放入 documents 目录
+cp new_paper.pdf data/documents/
+
+# 2. 重新构建索引（增量更新）
+# 在 Web UI 点击「构建索引」按钮
+```
+
+**删除文档**：
+
+```bash
+# 1. 从 documents 目录删除文件
+rm data/documents/old_paper.pdf
+
+# 2. 完全重建索引
+# 在 Web UI 点击「重新构建」按钮
 ```
 
 ---
 
-**更新时间：** 2025-12-21
+## 常见问题
+
+### Q1: 索引构建失败
+
+**症状**：点击「构建索引」后报错
+
+**可能原因**：
+1. LLM API Key 错误
+2. Embedding 模型下载失败
+3. 文档格式不支持
+
+**解决方案**：
+```bash
+# 1. 检查 API Key
+cat .env | grep LLM_API_KEY
+
+# 2. 查看日志
+tail -f logs/app.log
+
+# 3. 测试单个文档
+# 先删除其他文档，只留一个测试
+```
+
+### Q2: 答案质量不好
+
+**症状**：答案不准确或答非所问
+
+**优化方案**：
+1. **调整 Top-K**：增加检索文档数（5 → 10）
+2. **降低相似度阈值**：让检索更宽松（0.8 → 0.6）
+3. **检查文档质量**：确保文档内容清晰
+4. **优化提问方式**：问题更具体明确
+
+### Q3: Embedding 模型下载慢
+
+**症状**：首次启动时卡在下载模型
+
+**解决方案**：
+
+**方案1：使用国内镜像**
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+python web_ui_multi_turn.py
+```
+
+**方案2：手动下载模型**
+```bash
+# 下载到本地
+cd data/models
+git lfs clone https://huggingface.co/BAAI/bge-small-zh-v1.5
+
+# 修改配置
+EMBEDDING_CACHE_FOLDER=./data/models
+```
+
+**方案3：使用云端 Embedding**
+```bash
+# 改用 OpenAI Embedding（需 API Key）
+EMBEDDING_PROVIDER=openai
+EMBEDDING_API_KEY=your-openai-key
+```
+
+### Q4: 内存不足
+
+**症状**：程序崩溃或卡死
+
+**解决方案**：
+
+**方案1：使用更小的 Embedding 模型**
+```bash
+# 使用 FastEmbed（更轻量）
+EMBEDDING_PROVIDER=fastembed
+EMBEDDING_MODEL_NAME=BAAI/bge-small-zh-v1.5
+```
+
+**方案2：减小批处理大小**
+```bash
+EMBEDDING_BATCH_SIZE=5  # 默认 10
+```
+
+**方案3：减少文档数量**
+- 分批处理文档
+- 只保留最相关的文档
+
+### Q5: 对话没有上下文
+
+**症状**：每次提问都是独立的，AI 不记得前面的对话
+
+**检查点**：
+1. 确认使用的是 `web_ui_multi_turn.py`（多轮对话版本）
+2. 检查 `MAX_HISTORY_TURNS` 设置（应 > 0）
+3. 确认没有频繁点击「清空历史」按钮
+
+### Q6: 网络搜索不工作
+
+**症状**：启用网络搜索后仍无网络信息
+
+**检查点**：
+```bash
+# 1. 确认配置已启用
+ENABLE_WEB_SEARCH=true
+
+# 2. 检查网络连接
+ping duckduckgo.com
+
+# 3. 查看日志
+tail -f logs/app.log | grep "web_search"
+```
+
+---
+
+## 性能优化建议
+
+### 快速响应
+
+1. **使用云端 Embedding**：跳过模型下载和本地推理
+2. **减小 Top-K**：检索更少文档（10 → 5）
+3. **启用缓存**：相同问题直接返回缓存结果
+
+### 节省成本
+
+1. **使用本地 Embedding**：免费，无 API 调用费用
+2. **选择性价比高的 LLM**：DeepSeek 等
+3. **调低 Temperature**：减少不必要的创造性输出
+
+### 提升质量
+
+1. **增加 Top-K**：检索更多相关文档（5 → 10）
+2. **启用重排序**：`ENABLE_RERANKING=true`
+3. **优化文档质量**：确保文档清晰、结构良好
+4. **使用更强的 LLM**：GPT-4 等
+
+---
+
+## 进阶功能
+
+### 代码示例调用
+
+如果你想在代码中使用，参考：
+
+```python
+from src.agent import AcademicAgent
+
+# 初始化 Agent
+agent = AcademicAgent(
+    documents_dir="data/documents",
+    index_dir="data/vector_store",
+    max_history_turns=10
+)
+
+# 构建索引
+agent.build_index()
+
+# 多轮对话
+response1 = agent.chat("Transformer 是什么？")
+print(response1)
+
+response2 = agent.chat("它的优势是什么？")  # 自动理解上下文
+print(response2)
+
+# 清空历史
+agent.clear_history()
+```
+
+更多开发者功能见 [开发者指南](DEVELOPER_GUIDE.md)。
+
+---
+
+## 获取帮助
+
+- **查看日志**：`tail -f logs/app.log`
+- **提交 Issue**：[GitHub Issues](https://github.com/pengshuang/Awesome-Agent-Projects/issues)
+- **查看示例**：`examples/` 目录下的示例代码
+
+---
+
+**最后更新**: 2026-01-01

@@ -454,18 +454,6 @@ def main():
                             info="限制保留的对话轮数"
                         )
                         
-                        update_history_btn = gr.Button(
-                            "✅ 更新历史设置",
-                            size="sm"
-                        )
-                        
-                        history_status = gr.Textbox(
-                            label="历史状态",
-                            value="未设置",
-                            interactive=False,
-                            max_lines=2
-                        )
-                        
                         gr.Markdown("---")
                         
                         clear_btn_rag = gr.Button(
@@ -664,13 +652,6 @@ def main():
         init_and_build_btn.click(
             initialize_and_build, 
             outputs=[status_output]
-        )
-        
-        # 更新历史设置按钮绑定
-        update_history_btn.click(
-            update_history_setting,
-            inputs=[max_history_slider],
-            outputs=[history_status]
         )
         
         # 清空对话历史按钮绑定
