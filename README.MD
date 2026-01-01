@@ -23,7 +23,7 @@ This repository contains 4 independent Agent projects:
 - 📖 **[Academic Paper Q&A System](./paper-qa-system)** - Intelligent paper reading assistant based on RAG
 - 📊 **[AI Data Analyst](./ai-data-analyst-system)** - Intelligent data analysis tool with multi-source support
 - 💼 **[AI Interview Coach](./interview-coach-system)** - Resume evaluation and mock interview services
-- 🤖 **[Data Synthesis System](./multi-agent-data-synthesis-system)** - Multi-agent system for generating high-quality training data
+- 🤖 **[Data Synthesis System](./text-data-synthesis-system)** - Multi-agent system for generating high-quality training data
 
 ---
 

@@ -24,7 +24,7 @@
 - 📖 **[学术论文问答系统](./paper-qa-system)** - 基于 RAG 的智能论文阅读助手
 - 📊 **[AI 数据分析助手](./ai-data-analyst-system)** - 支持多数据源的智能数据分析工具
 - 💼 **[AI 面试教练](./interview-coach-system)** - 提供简历评估和模拟面试服务
-- 🤖 **[数据合成系统](./multi-agent-data-synthesis-system)** - 基于多智能体协作的高质量训练数据生成系统
+- 🤖 **[数据合成系统](./text-data-synthesis-system)** - 基于多智能体协作的高质量训练数据生成系统
 
 ---
 

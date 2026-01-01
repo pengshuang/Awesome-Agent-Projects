@@ -29,7 +29,7 @@
 
 ### 交互界面
 
-`![ui-1](./imgs/ui-1.png)
+![ui-1](./imgs/ui-1.png)
 
 ![ui-2](./imgs/ui-2.png)
 

@@ -1,0 +1,21 @@
+# 多模态数据合成系统依赖
+
+# 核心框架
+langchain==0.1.0
+langchain-openai==0.0.5
+langgraph==0.0.26
+
+# OpenAI SDK
+openai>=1.10.0
+
+# 数据处理和验证
+pydantic>=2.5.0
+
+# Web UI
+gradio>=4.15.0
+
+# 图片处理
+Pillow>=10.0.0
+
+# 工具库
+python-dotenv>=1.0.0
