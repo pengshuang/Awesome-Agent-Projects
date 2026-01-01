@@ -251,8 +251,7 @@ python web_ui.py
 
 ## 🙏 致谢
 
-- 参考项目：[multi-agent-data-synthesis-system](../multi-agent-data-synthesis-system)
-- 技术支持：LangChain、LangGraph 社区
+技术支持：LangChain、LangGraph 社区
 
 ---
 
