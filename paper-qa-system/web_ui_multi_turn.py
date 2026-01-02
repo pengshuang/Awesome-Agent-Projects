@@ -404,7 +404,8 @@ def main():
                             label="💬 对话窗口",
                             height=450,
                             type="messages",
-                            render_markdown=True
+                            render_markdown=True,
+                            value=[]  # 初始化为空列表
                         )
                         
                         # 输入框区域
@@ -466,12 +467,17 @@ def main():
                 def user_rag(message, history):
                     """处理用户输入"""
                     if not message or not message.strip():
-                        return "", history
+                        return "", history if history else []
+                    # 确保 history 是列表，并添加用户消息
+                    if history is None:
+                        history = []
                     return "", history + [{"role": "user", "content": message}]
                 
                 def bot_rag(history, enable_web, top_k, use_history):
                     """处理机器人回复"""
-                    if not history or (history[-1].get("role") != "user"):
+                    if not history:
+                        return []
+                    if history[-1].get("role") != "user":
                         return history
                     
                     user_msg = history[-1]["content"]
@@ -486,7 +492,10 @@ def main():
                     response = ""
                     for chunk in response_gen:
                         response = chunk  # 获取最后一个 yield 的值
-                    return history + [{"role": "assistant", "content": response}]
+                    
+                    # 确保返回有效的 messages 格式 (必须是列表形式，包含 role 和 content)
+                    result = history + [{"role": "assistant", "content": response}]
+                    return result
                 
                 submit_rag.click(
                     user_rag, 
@@ -522,7 +531,8 @@ def main():
                             label="💬 对话窗口",
                             height=450,
                             type="messages",
-                            render_markdown=True
+                            render_markdown=True,
+                            value=[]  # 初始化为空列表
                         )
                         
                         # 输入框区域
@@ -577,12 +587,17 @@ def main():
                 def user_direct(message, history):
                     """处理用户输入"""
                     if not message or not message.strip():
-                        return "", history
+                        return "", history if history else []
+                    # 确保 history 是列表，并添加用户消息
+                    if history is None:
+                        history = []
                     return "", history + [{"role": "user", "content": message}]
                 
                 def bot_direct(history, enable_web, docs):
                     """处理机器人回复"""
-                    if not history or (history[-1].get("role") != "user"):
+                    if not history:
+                        return []
+                    if history[-1].get("role") != "user":
                         return history
                     
                     user_msg = history[-1]["content"]
@@ -597,7 +612,10 @@ def main():
                     response = ""
                     for chunk in response_gen:
                         response = chunk  # 获取最后一个 yield 的值
-                    return history + [{"role": "assistant", "content": response}]
+                    
+                    # 确保返回有效的 messages 格式 (必须是列表形式，包含 role 和 content)
+                    result = history + [{"role": "assistant", "content": response}]
+                    return result
                 
                 submit_direct.click(
                     user_direct, 
@@ -657,11 +675,11 @@ def main():
         # 清空对话历史按钮绑定
         def clear_rag():
             clear_chat_history()
-            return []
+            return []  # 返回空列表用于 messages 格式
         
         def clear_direct():
             clear_chat_history()
-            return []
+            return []  # 返回空列表用于 messages 格式
         
         clear_btn_rag.click(
             clear_rag,
