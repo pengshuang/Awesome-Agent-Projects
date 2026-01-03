@@ -100,7 +100,7 @@ AI驱动的全方位英语学习伴侣，提供智能化的对话练习和综合
 
 **技术栈**: LangGraph · LangChain · OpenAI/Qwen Vision · Pydantic · Gradio
 
-[📂 查看项目](./multi-agent-data-synthesis-system) | [📖 中文文档](./multi-agent-data-synthesis-system/README_CN.md) | [📖 English Doc](./multi-agent-data-synthesis-system/README.md)
+[📂 查看项目](./multimodal-data-synthesis-system) | [📖 中文文档](./multimodal-data-synthesis-system/README_CN.md) | [📖 English Doc](./multimodal-data-synthesis-system/README.md)
 
 ---
 
