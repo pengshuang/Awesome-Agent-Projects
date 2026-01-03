@@ -99,7 +99,7 @@ High-quality multimodal training data synthesis platform based on multi-agent co
 
 **Tech Stack**: LangGraph · LangChain · OpenAI/Qwen Vision · Pydantic · Gradio
 
-[📂 View Project](./multi-agent-data-synthesis-system) | [📖 English Documentation](./multi-agent-data-synthesis-system/README.md) | [📖 中文文档](./multi-agent-data-synthesis-system/README_CN.md)
+[📂 View Project](./multimodal-data-synthesis-system) | [📖 English Documentation](./multimodal-data-synthesis-system/README.md) | [📖 中文文档](./multimodal-data-synthesis-system/README_CN.md)
 
 ---
 
